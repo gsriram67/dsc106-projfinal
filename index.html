@@ -7,7 +7,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
-    <h2>Group Members: Govind Sriram, Prisha Maiti, Zachary Louie, Anand Baidya</h2>
+    <main class="page-shell">
+        <section class="hero-card">
+            <p class="eyebrow">DSC 106 Final Project</p>
+            <h1>Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
+            <p class="deck">
+                This first pass uses county population as a proxy for urbanicity and compares the
+                estimated age-adjusted death-rate ranges for smaller and larger counties across years.
+            </p>
+            <p class="members">Group Members: Govind Sriram, Prisha Maiti, Zachary Louie, Anand Baidya</p>
+        </section>
+
+        <section class="viz-card">
+            <div class="controls">
+                <label class="slider-group" for="year-slider">
+                    <span>Year</span>
+                    <strong id="year-label">Loading…</strong>
+                </label>
+                <input id="year-slider" type="range" min="0" max="0" value="0" step="1" disabled>
+                <button id="play-button" type="button" disabled>Play</button>
+            </div>
+
+            <div id="legend" class="legend-bar" aria-label="Chart legend"></div>
+
+            <div id="chart" class="chart-container" aria-label="Line chart comparing county population groups over time"></div>
+
+            <div class="insights">
+                <div>
+                    <p class="insight-label">Selected year gap</p>
+                    <p id="gap-value" class="insight-value">—</p>
+                </div>
+                <p id="year-summary" class="summary-text">Loading data…</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
