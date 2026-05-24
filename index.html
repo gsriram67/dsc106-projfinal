@@ -7,42 +7,81 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <main class="page-shell">
-        <section class="hero-card">
-            <p class="eyebrow">DSC 106 Final Project</p>
-            <h1>Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
-            <p class="deck">
-                This first pass uses county population as a proxy for urbanicity and compares the
-                estimated age-adjusted death-rate ranges for smaller and larger counties across years.
-            </p>
-            <p class="members">Group Members: Govind Sriram, Prisha Maiti, Zachary Louie, Anand Baidya</p>
-        </section>
 
-        <section class="viz-card">
-            <div class="controls">
-                <label class="slider-group" for="year-slider">
-                    <span>Year</span>
-                    <strong id="year-label">Loading…</strong>
-                </label>
-                <input id="year-slider" type="range" min="0" max="0" value="0" step="1" disabled>
-                <button id="play-button" type="button" disabled>Play</button>
-            </div>
+    <header class="site-header">
+        <div class="header-inner">
+            <p class="header-kicker">DSC 106 Final Project &mdash; UC San Diego, Spring 2026</p>
+        </div>
+    </header>
 
-            <div id="legend" class="legend-bar" aria-label="Chart legend"></div>
+    <div class="intro-block">
+        <p class="intro-eyebrow">Data Analysis</p>
+        <h1 class="intro-headline">Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
+        <p class="intro-deck">The geography of America&#8217;s drug epidemic is fiercely debated. In political arenas, sentiment frequently points to large cities as the undisputed hubs of drug-related mortality.</p>
+        <p class="intro-deck">To separate political talking points from public health realities, we analyzed the CDC&#8217;s latest county-level dataset on drug mortality. By mapping the crisis locally across the United States, we can test the conventional wisdom and answer a critical question: is this primarily an urban crisis, or is the reality much more complex?</p>
+        <p class="intro-byline">By Govind Sriram, Prisha Maiti, Zachary Louie, and Anand Baidya</p>
+        <div class="intro-rule"></div>
+    </div>
 
+    <section class="scrolly" aria-label="Scrollable data story">
+
+        <figure class="sticky-figure" aria-hidden="true">
+            <div id="legend" class="legend-bar"></div>
             <div id="chart" class="chart-container" aria-label="Line chart comparing county population groups over time"></div>
+            <p id="chart-caption" class="chart-caption">Scroll to explore &darr;</p>
+        </figure>
 
-            <div class="insights">
-                <div>
-                    <p class="insight-label">Selected year gap</p>
-                    <p id="gap-value" class="insight-value">—</p>
+        <div class="step-container">
+
+            <div class="step" data-step="0">
+                <div class="step-inner">
+                    <p class="step-year">1999</p>
+                    <h2 class="step-head">The age of OxyContin</h2>
+                    <p class="step-body">In 1999, Purdue Pharma's OxyContin had been on the market for three years, aggressively marketed to physicians as a safe, non-addictive painkiller. Death rates from drug poisoning were low — and nearly identical in rural and urban counties alike. No one saw what was coming.</p>
                 </div>
-                <p id="year-summary" class="summary-text">Loading data…</p>
             </div>
-        </section>
-    </main>
+
+            <div class="step" data-step="1">
+                <div class="step-inner">
+                    <p class="step-year">2007</p>
+                    <h2 class="step-head">Purdue Pharma pleads guilty</h2>
+                    <p class="step-body">In 2007, Purdue Pharma and three of its executives pleaded guilty to federal charges of misleading doctors and regulators about OxyContin's addictive potential. They paid $634.5 million in fines. But by then, millions were already dependent — and the death toll had been climbing for years.</p>
+                </div>
+            </div>
+
+            <div class="step" data-step="2">
+                <div class="step-inner">
+                    <p class="step-year">2010</p>
+                    <h2 class="step-head">OxyContin is reformulated — rural America pays the price</h2>
+                    <p class="step-body">In 2010, the FDA approved an abuse-deterrent OxyContin formulation, making pills harder to crush and inject. Many dependent users shifted to heroin instead. Rural counties — already hit hardest by prescription opioids, with fewer treatment options and less oversight of pill mills — bore the brunt of this transition.</p>
+                </div>
+            </div>
+
+            <div class="step" data-step="3">
+                <div class="step-inner">
+                    <p class="step-year">2014</p>
+                    <h2 class="step-head">Fentanyl changes everything</h2>
+                    <p class="step-body">By 2014, illicitly manufactured fentanyl — up to 100 times more potent than morphine — was contaminating the heroin supply. The gap between rural and urban death rates reached its widest point. Rural counties had been dying faster for over a decade, and the most lethal chapter of the crisis was just beginning.</p>
+                </div>
+            </div>
+
+            <div class="step" data-step="4">
+                <div class="step-inner">
+                    <p class="step-year">2015</p>
+                    <h2 class="step-head">The crisis reaches everywhere</h2>
+                    <p class="step-body">By 2015, urban death rates were surging sharply as fentanyl-laced drugs penetrated city markets. The gap between rural and urban counties began to narrow — not because rural areas recovered, but because urban areas were being pulled rapidly upward. The conventional wisdom about this being a rural crisis was always incomplete. The epidemic had become universal.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <p>Data: National Center for Health Statistics, Drug Poisoning Mortality by County, United States. &middot; DSC 106, UC San Diego, Spring 2026.</p>
+    </footer>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/scrollama@2.2.1/build/scrollama.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

@@ -1,28 +1,53 @@
-
-const dataUrl = "NCHS_-_Drug_Poisoning_Mortality_by_County__United_States_20260522.csv";
+const dataUrl       = "NCHS_-_Drug_Poisoning_Mortality_by_County__United_States_20260522.csv";
+const urbanRuralUrl = "County_Urban_Rural.csv";
 
 const state = {
     rows: [],
     years: [],
     series: [],
-    selectedIndex: 0,
-    playTimer: null,
-    resizeObserver: null,
+    currentStep: 0,
 };
 
-const chartContainer = document.querySelector("#chart");
-const yearSlider = document.querySelector("#year-slider");
-const yearLabel = document.querySelector("#year-label");
-const playButton = document.querySelector("#play-button");
-const gapValue = document.querySelector("#gap-value");
-const yearSummary = document.querySelector("#year-summary");
-const legendContainer = document.querySelector("#legend");
+// Persistent SVG references — created once in initChart(), updated in updateChart()
+const chart = {
+    svg:         null,
+    xScale:      null,
+    yScale:      null,
+    margin:      null,
+    paths:       {},  // key → { el, totalLen }
+    dots:        {},  // key → [{ el, year, value }]
+    annotations: [],  // [{ year, g }]
+    gapG:        null,
+    gapLine:     null,
+    gapTickTop:  null,
+    gapTickBot:  null,
+    gapText:     null,
+    focusLabel:  null,
+};
 
-const populationBands = [
-    { key: "smallest", label: "Smallest counties", color: "#0f766e" },
-    { key: "lower-mid", label: "Lower-middle counties", color: "#3b82f6" },
-    { key: "upper-mid", label: "Upper-middle counties", color: "#f59e0b" },
-    { key: "largest", label: "Largest counties", color: "#c2410c" },
+const ANNOTATIONS = [
+    { year: 2007, label: "Purdue plea" },
+    { year: 2010, label: "OxyContin Rx" },
+    { year: 2014, label: "Fentanyl surge" },
+];
+
+const chartContainer  = document.querySelector("#chart");
+const legendContainer = document.querySelector("#legend");
+const chartCaption    = document.querySelector("#chart-caption");
+
+const urBands = [
+    { key: "rural", label: "Rural", color: "#4472C4" },
+    { key: "urban", label: "Urban", color: "#D97706" },
+];
+
+const DRAW_MS  = 900;
+
+const STEP_CONFIGS = [
+    { targetYear: 1999, emphasizedKey: null,    showGap: false },
+    { targetYear: 2007, emphasizedKey: null,    showGap: false },
+    { targetYear: 2010, emphasizedKey: "rural", showGap: false },
+    { targetYear: 2014, emphasizedKey: "rural", showGap: true  },
+    { targetYear: 9999, emphasizedKey: null,    showGap: false },
 ];
 
 const formatRate = d3.format(".1f");
@@ -33,375 +58,351 @@ function parsePopulation(value) {
 }
 
 function parseRateRange(value) {
-    if (!value) {
-        return null;
-    }
-
+    if (!value) return null;
     const text = String(value).trim();
-
     if (text.startsWith(">")) {
         const parsed = Number(text.slice(1).replace(/[^0-9.]/g, ""));
         return Number.isFinite(parsed) ? parsed + 1 : null;
     }
-
     if (text.includes("-")) {
-        const [low, high] = text.split("-").map((part) => Number(part.trim()));
-        if (Number.isFinite(low) && Number.isFinite(high)) {
-            return (low + high) / 2;
-        }
+        const [low, high] = text.split("-").map((p) => Number(p.trim()));
+        if (Number.isFinite(low) && Number.isFinite(high)) return (low + high) / 2;
     }
-
     const parsed = Number(text.replace(/[^0-9.]/g, ""));
     return Number.isFinite(parsed) ? parsed : null;
 }
 
-function classifyPopulation(population, thresholds) {
-    if (population <= thresholds[0]) {
-        return populationBands[0];
-    }
-    if (population <= thresholds[1]) {
-        return populationBands[1];
-    }
-    if (population <= thresholds[2]) {
-        return populationBands[2];
-    }
-    return populationBands[3];
-}
+function buildSeries(rows, fipsToGroup) {
+    const withGroups = rows
+        .map((r) => ({ ...r, groupKey: fipsToGroup.get(r.fips) }))
+        .filter((r) => r.groupKey != null);
 
-function buildSeries(rows) {
-    const populations = rows.map((row) => row.population).sort(d3.ascending);
-    const thresholds = [
-        d3.quantileSorted(populations, 0.25),
-        d3.quantileSorted(populations, 0.5),
-        d3.quantileSorted(populations, 0.75),
-    ];
+    const years = Array.from(new Set(withGroups.map((r) => r.year))).sort(d3.ascending);
 
-    const withGroups = rows.map((row) => ({
-        ...row,
-        group: classifyPopulation(row.population, thresholds),
-    }));
-
-    const years = Array.from(new Set(withGroups.map((row) => row.year))).sort(d3.ascending);
     const nested = d3.rollups(
         withGroups,
-        (values) => ({
-            median: d3.median(values, (value) => value.rateMid),
-            mean: d3.mean(values, (value) => value.rateMid),
-            count: values.length,
-        }),
-        (row) => row.year,
-        (row) => row.group.key
+        (vals) => ({ mean: d3.mean(vals, (v) => v.rateMid), count: vals.length }),
+        (r) => r.year,
+        (r) => r.groupKey
     );
 
-    const yearLookup = new Map(
-        nested.map(([year, values]) => [year, new Map(values)])
-    );
+    const yearLookup = new Map(nested.map(([year, vals]) => [year, new Map(vals)]));
 
-    const series = populationBands.map((band) => ({
+    const series = urBands.map((band) => ({
         ...band,
         values: years.map((year) => {
-            const record = yearLookup.get(year)?.get(band.key);
-            return {
-                year,
-                value: record ? record.median : null,
-                mean: record ? record.mean : null,
-                count: record ? record.count : 0,
-            };
+            const rec = yearLookup.get(year)?.get(band.key);
+            return { year, value: rec ? rec.mean : null, count: rec ? rec.count : 0 };
         }),
     }));
 
     return { series, years };
 }
 
-function updateText() {
-    const selectedYear = state.years[state.selectedIndex];
-    const selectedValues = state.series
-        .map((series) => ({
-            label: series.label,
-            color: series.color,
-            datum: series.values[state.selectedIndex],
-        }))
-        .filter((item) => item.datum && item.datum.value != null);
-
-    const smallest = selectedValues[0];
-    const largest = selectedValues[selectedValues.length - 1];
-    const gap = smallest && largest ? largest.datum.value - smallest.datum.value : null;
-
-    yearLabel.textContent = selectedYear ?? "—";
-    gapValue.textContent = gap == null ? "—" : `${formatRate(gap)} points`;
-
-    const firstYear = state.years[0];
-    const lastYear = state.years[state.years.length - 1];
-    const firstSmall = state.series[0]?.values[0]?.value;
-    const firstLarge = state.series[state.series.length - 1]?.values[0]?.value;
-    const lastSmall = state.series[0]?.values[state.years.length - 1]?.value;
-    const lastLarge = state.series[state.series.length - 1]?.values[state.years.length - 1]?.value;
-    const startGap = firstSmall != null && firstLarge != null ? firstLarge - firstSmall : null;
-    const endGap = lastSmall != null && lastLarge != null ? lastLarge - lastSmall : null;
-
-    const trendText =
-        startGap != null && endGap != null
-            ? `Across the full time span, the smallest-vs-largest county gap ${Math.abs(endGap) < Math.abs(startGap) ? "narrows" : "widens"} from ${formatRate(startGap)} in ${firstYear} to ${formatRate(endGap)} in ${lastYear}.`
-            : "";
-
-    yearSummary.textContent = selectedValues.length
-        ? `In ${selectedYear}, the median midpoint rate was ${formatRate(smallest.datum.value)} in the smallest counties and ${formatRate(largest.datum.value)} in the largest counties. ${trendText}`
-        : "No comparable values were available for the selected year.";
+function nearestYear(target) {
+    if (!state.years.length) return null;
+    const clamped = Math.min(target, state.years[state.years.length - 1]);
+    return state.years.reduce((prev, curr) =>
+        Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev
+    );
 }
 
-function renderChart() {
-    if (!state.rows.length || !state.years.length) {
-        return;
-    }
-
+function initChart() {
     chartContainer.innerHTML = "";
-    legendContainer.innerHTML = "";
 
-    legendContainer.innerHTML = state.series
-        .map(
-            (series) => `
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background:${series.color}"></span>
-                    <span>${series.label}</span>
-                </div>
-            `
-        )
+    // Legend
+    legendContainer.innerHTML = urBands
+        .map((band) => `<div class="legend-item">
+            <span class="legend-swatch" id="swatch-${band.key}" style="background:${band.color}"></span>
+            <span>${band.label}</span>
+        </div>`)
         .join("");
 
-    const width = chartContainer.clientWidth || 900;
-    const height = Math.max(460, Math.round(width * 0.58));
-    const margin = { top: 28, right: 28, bottom: 58, left: 72 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const width  = chartContainer.clientWidth || 600;
+    const height = Math.min(Math.max(300, Math.round(width * 0.62)), 460);
+    const margin = { top: 75, right: 28, bottom: 60, left: 62 };
+    const innerW = width  - margin.left - margin.right;
+    const innerH = height - margin.top  - margin.bottom;
 
-    const svg = d3
-        .select(chartContainer)
+    chart.margin = margin;
+
+    const svg = d3.select(chartContainer)
         .append("svg")
         .attr("viewBox", `0 0 ${width} ${height}`)
-        .attr("role", "img")
-        .attr("aria-label", "Line chart showing median estimated drug poisoning mortality by county population group over time");
+        .attr("aria-label", "Line chart showing average drug poisoning mortality by urban/rural status");
+    chart.svg = svg;
 
-    const tooltip = d3
-        .select(chartContainer)
-        .append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
+    svg.append("text")
+        .attr("x", width / 2).attr("y", 20)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#333").attr("font-size", 12).attr("font-weight", "600")
+        .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+        .text("Drug Poisoning Mortality Trends by Urban/Rural Status");
 
-    const x = d3
-        .scaleLinear()
+    const x = d3.scaleLinear()
         .domain(d3.extent(state.years))
         .range([margin.left, width - margin.right]);
-
-    const yMax = d3.max(state.series, (series) => d3.max(series.values, (value) => value.value));
-    const y = d3
-        .scaleLinear()
-        .domain([0, yMax * 1.12])
-        .nice()
+    const yMax = d3.max(state.series, (s) => d3.max(s.values, (v) => v.value));
+    const y = d3.scaleLinear()
+        .domain([0, Math.ceil(yMax) + 2]).nice()
         .range([height - margin.bottom, margin.top]);
+    chart.xScale = x;
+    chart.yScale = y;
 
-    const xAxis = d3
-        .axisBottom(x)
-        .tickValues(state.years.filter((year, index) => index % 2 === 0 || index === state.years.length - 1))
-        .tickFormat(d3.format("d"));
-
-    const yAxis = d3.axisLeft(y).ticks(6).tickSize(-innerWidth).tickPadding(10);
-
-    svg
-        .append("g")
-        .attr("transform", `translate(0, ${height - margin.bottom})`)
-        .call(xAxis)
-        .call((group) => group.selectAll("text").attr("fill", "#526174"))
-        .call((group) => group.selectAll("path, line").attr("stroke", "#b7c3cf"));
-
-    svg
-        .append("g")
+    svg.append("g")
         .attr("transform", `translate(${margin.left}, 0)`)
-        .call(yAxis)
-        .call((group) => group.selectAll("text").attr("fill", "#526174"))
-        .call((group) => group.selectAll("path, line").attr("stroke", "#d7e0e8"))
-        .call((group) => group.selectAll(".tick line").attr("opacity", 0.45));
+        .call(d3.axisLeft(y).ticks(6).tickSize(-innerW).tickPadding(8))
+        .call((g) => g.selectAll("text").attr("fill", "#999").attr("font-size", 10).attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif"))
+        .call((g) => g.selectAll("path").remove())
+        .call((g) => g.selectAll(".tick line").attr("stroke", "#e8e8e8"));
 
-    svg
-        .append("text")
-        .attr("x", margin.left)
-        .attr("y", 18)
-        .attr("fill", "#526174")
-        .attr("font-size", 13)
-        .text("Estimated death-rate midpoint by county population group");
+    svg.append("g")
+        .attr("transform", `translate(0, ${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickValues(state.years).tickFormat(d3.format("d")).tickSize(4))
+        .call((g) => g.selectAll("text")
+            .attr("fill", "#999").attr("font-size", 9.5).attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+            .attr("transform", "rotate(-45)").attr("text-anchor", "end").attr("dy", "0.3em").attr("dx", "-0.4em"))
+        .call((g) => g.selectAll("path").attr("stroke", "#e2e2e2"))
+        .call((g) => g.selectAll(".tick line").attr("stroke", "#e2e2e2"));
 
-    const line = d3
-        .line()
-        .defined((datum) => datum.value != null)
-        .x((datum) => x(datum.year))
-        .y((datum) => y(datum.value))
+    svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -(margin.top + innerH / 2)).attr("y", 14)
+        .attr("text-anchor", "middle").attr("fill", "#aaa").attr("font-size", 10)
+        .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+        .text("Average Death Rate (per 100k)");
+
+    svg.append("text")
+        .attr("x", margin.left + innerW / 2).attr("y", height - 4)
+        .attr("text-anchor", "middle").attr("fill", "#aaa").attr("font-size", 10)
+        .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+        .text("Year");
+
+    const line = d3.line()
+        .defined((d) => d.value != null)
+        .x((d) => x(d.year))
+        .y((d) => y(d.value))
         .curve(d3.curveMonotoneX);
+
+    // Annotation lines — drawn before series so they sit underneath
+    chart.annotations = ANNOTATIONS.map((ann) => {
+        const ax = x(ann.year);
+        const g  = svg.append("g").attr("opacity", 0);
+
+        g.append("line")
+            .attr("x1", ax).attr("x2", ax)
+            .attr("y1", margin.top).attr("y2", height - margin.bottom)
+            .attr("stroke", "#d0d0d0")
+            .attr("stroke-dasharray", "3 3")
+            .attr("stroke-width", 1);
+
+        g.append("text")
+            .attr("transform", `translate(${ax + 3}, ${margin.top - 5}) rotate(-45)`)
+            .attr("text-anchor", "start")
+            .attr("fill", "#aaa")
+            .attr("font-size", 8.5)
+            .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+            .text(ann.label);
+
+        return { year: ann.year, g };
+    });
 
     const seriesGroup = svg.append("g");
 
-    seriesGroup
-        .selectAll("path.series-line")
-        .data(state.series)
-        .join("path")
-        .attr("class", "series-line")
-        .attr("d", (series) => line(series.values))
-        .attr("fill", "none")
-        .attr("stroke", (series) => series.color)
-        .attr("stroke-width", 3)
-        .attr("stroke-linecap", "round")
-        .attr("opacity", 0.9);
+    // Create paths — fully hidden (dashoffset = totalLen)
+    chart.paths = {};
+    state.series.forEach((s) => {
+        const el = seriesGroup.append("path")
+            .datum(s.values)
+            .attr("fill", "none")
+            .attr("stroke", s.color)
+            .attr("stroke-width", 2.5)
+            .attr("stroke-linecap", "round")
+            .attr("d", line);
 
-    seriesGroup
-        .selectAll("circle.series-point")
-        .data(state.series.flatMap((series) =>
-            series.values
-                .filter((datum) => datum.value != null)
-                .map((datum) => ({ ...datum, label: series.label, color: series.color }))
-        ))
-        .join("circle")
-        .attr("class", "series-point")
-        .attr("cx", (datum) => x(datum.year))
-        .attr("cy", (datum) => y(datum.value))
-        .attr("r", 3.5)
-        .attr("fill", (datum) => datum.color)
-        .attr("stroke", "white")
-        .attr("stroke-width", 1.2)
-        .on("mouseenter", (event, datum) => {
-            tooltip
-                .style("opacity", 1)
-                .html(
-                    `<strong>${datum.label}</strong>${datum.year}<br>Median midpoint: ${formatRate(datum.value)}<br>Counties: ${datum.count}`
-                );
-        })
-        .on("mousemove", (event) => {
-            const [xPos, yPos] = d3.pointer(event, chartContainer);
-            tooltip
-                .style("left", `${xPos}px`)
-                .style("top", `${yPos}px`);
-        })
-        .on("mouseleave", () => {
-            tooltip.style("opacity", 0);
+        const totalLen = el.node().getTotalLength();
+        el.attr("stroke-dasharray", totalLen).attr("stroke-dashoffset", totalLen);
+        chart.paths[s.key] = { el, totalLen };
+    });
+
+    // Create all dots — fully hidden
+    chart.dots = {};
+    state.series.forEach((s) => {
+        chart.dots[s.key] = s.values
+            .filter((v) => v.value != null)
+            .map((v) => ({
+                year: v.year,
+                value: v.value,
+                el: seriesGroup.append("circle")
+                    .attr("cx", x(v.year))
+                    .attr("cy", y(v.value))
+                    .attr("r", 3.5)
+                    .attr("fill", s.color)
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 1.5)
+                    .attr("opacity", 0),
+            }));
+    });
+
+    // Gap bracket group — hidden until needed
+    const gapG = svg.append("g").attr("opacity", 0);
+    chart.gapG      = gapG;
+    chart.gapLine    = gapG.append("line").attr("stroke", "#999").attr("stroke-width", 1);
+    chart.gapTickTop = gapG.append("line").attr("stroke", "#999").attr("stroke-width", 1);
+    chart.gapTickBot = gapG.append("line").attr("stroke", "#999").attr("stroke-width", 1);
+    chart.gapText    = gapG.append("text")
+        .attr("fill", "#555").attr("font-size", 11)
+        .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif");
+
+    // Focus year label — hidden until first update
+    chart.focusLabel = svg.append("text")
+        .attr("fill", "#555").attr("font-size", 11).attr("font-weight", "700")
+        .attr("font-family", "Helvetica Neue, Helvetica, Arial, sans-serif")
+        .attr("opacity", 0);
+}
+
+function updateChart(stepConfig, instant = false) {
+    const {
+        targetYear    = state.years[state.years.length - 1],
+        emphasizedKey = null,
+        showGap       = false,
+    } = stepConfig;
+
+    const focusYear = nearestYear(targetYear);
+    const focusIdx  = state.years.indexOf(focusYear);
+    const drawRatio = state.years.length > 1 ? focusIdx / (state.years.length - 1) : 1;
+    const dur       = instant ? 0 : DRAW_MS;
+
+    const x = chart.xScale;
+    const y = chart.yScale;
+
+    // Paths — transition dashoffset + stroke width (emphasis = thicker, not color change)
+    state.series.forEach((s) => {
+        const isEmph       = !emphasizedKey || s.key === emphasizedKey;
+        const { el, totalLen } = chart.paths[s.key];
+        const targetOffset = totalLen * (1 - drawRatio);
+
+        el.attr("stroke", s.color).attr("stroke-width", isEmph ? 2.5 : 1.5);
+        el.transition().duration(dur).ease(d3.easeQuadOut).attr("stroke-dashoffset", targetOffset);
+    });
+
+    // Dots — fade in/out based on year <= focusYear
+    state.series.forEach((s) => {
+        const isEmph = !emphasizedKey || s.key === emphasizedKey;
+
+        chart.dots[s.key].forEach((dot) => {
+            const shouldShow = dot.year <= focusYear;
+            dot.el
+                .attr("fill", s.color)
+                .attr("r", dot.year === focusYear && isEmph ? 5.5 : 3.5)
+                .transition()
+                .duration(instant ? 0 : 200)
+                .attr("opacity", shouldShow ? 1 : 0);
         });
+    });
 
-    const selectedYear = state.years[state.selectedIndex];
+    // Gap bracket
+    if (showGap) {
+        const ruralS = state.series.find((s) => s.key === "rural");
+        const urbanS = state.series.find((s) => s.key === "urban");
+        if (ruralS && urbanS) {
+            const rPt = ruralS.values.find((v) => v.year === focusYear);
+            const uPt = urbanS.values.find((v) => v.year === focusYear);
+            if (rPt?.value != null && uPt?.value != null) {
+                const gap  = Math.abs(rPt.value - uPt.value);
+                const xPos = x(focusYear) + 16;
+                const yTop = y(rPt.value);
+                const yBot = y(uPt.value);
 
-    svg
-        .append("line")
-        .attr("x1", x(selectedYear))
-        .attr("x2", x(selectedYear))
-        .attr("y1", margin.top)
-        .attr("y2", height - margin.bottom)
-        .attr("stroke", "#8aa0b6")
-        .attr("stroke-dasharray", "6 6")
-        .attr("stroke-width", 1.4);
+                chart.gapLine.attr("x1", xPos).attr("x2", xPos).attr("y1", yTop).attr("y2", yBot);
+                chart.gapTickTop.attr("x1", xPos - 4).attr("x2", xPos + 4).attr("y1", yTop).attr("y2", yTop);
+                chart.gapTickBot.attr("x1", xPos - 4).attr("x2", xPos + 4).attr("y1", yBot).attr("y2", yBot);
+                chart.gapText.attr("x", xPos + 8).attr("y", (yTop + yBot) / 2 + 4).text(`${formatRate(gap)} pt gap`);
 
-    const selectedGroup = seriesGroup
-        .selectAll("circle.selected-point")
-        .data(state.series.map((series) => ({
-            ...series.values[state.selectedIndex],
-            label: series.label,
-            color: series.color,
-        })).filter((datum) => datum.value != null))
-        .join("circle")
-        .attr("class", "selected-point")
-        .attr("cx", (datum) => x(datum.year))
-        .attr("cy", (datum) => y(datum.value))
-        .attr("r", 7)
-        .attr("fill", (datum) => datum.color)
-        .attr("fill-opacity", 0.18)
-        .attr("stroke", (datum) => datum.color)
-        .attr("stroke-width", 2.5);
-
-    svg
-        .append("text")
-        .attr("x", x(selectedYear) + 8)
-        .attr("y", margin.top + 16)
-        .attr("fill", "#334155")
-        .attr("font-size", 13)
-        .attr("font-weight", 700)
-        .text(`Selected: ${selectedYear}`);
-
-}
-
-function updateSelectedYear(nextIndex) {
-    state.selectedIndex = nextIndex;
-    yearSlider.value = String(nextIndex);
-    updateText();
-    renderChart();
-}
-
-function startPlaying() {
-    if (state.playTimer) {
-        clearInterval(state.playTimer);
+                chart.gapG.transition().duration(instant ? 0 : 300).attr("opacity", 1);
+            }
+        }
+    } else {
+        chart.gapG.transition().duration(instant ? 0 : 200).attr("opacity", 0);
     }
 
-    playButton.textContent = "Pause";
-    state.playTimer = setInterval(() => {
-        const nextIndex = state.selectedIndex >= state.years.length - 1 ? 0 : state.selectedIndex + 1;
-        updateSelectedYear(nextIndex);
-    }, 1400);
+    // Annotations — fade in as line draws past each event year
+    chart.annotations.forEach((ann) => {
+        ann.g.transition().duration(instant ? 0 : 400)
+            .attr("opacity", focusYear >= ann.year ? 1 : 0);
+    });
+
+    // Focus year label
+    chart.focusLabel
+        .attr("x", x(focusYear) + 6)
+        .attr("y", chart.margin.top + 14)
+        .text(focusYear)
+        .transition().duration(instant ? 0 : 200)
+        .attr("opacity", 1);
+
+    if (chartCaption) chartCaption.textContent = `Showing ${focusYear}`;
 }
 
-function stopPlaying() {
-    if (state.playTimer) {
-        clearInterval(state.playTimer);
-        state.playTimer = null;
-    }
-    playButton.textContent = "Play";
+function updateForStep(stepIndex) {
+    state.currentStep = stepIndex;
+    document.querySelectorAll(".step").forEach((el, i) => {
+        el.classList.toggle("is-active", i === stepIndex);
+    });
+    updateChart(STEP_CONFIGS[Math.min(stepIndex, STEP_CONFIGS.length - 1)]);
 }
 
 async function init() {
-    const rawRows = await d3.csv(dataUrl, (row) => {
-        const year = Number(row.Year);
-        const population = parsePopulation(row.Population);
-        const rateMid = parseRateRange(row["Estimated Age-adjusted Death Rate, 16 Categories (in ranges)"]);
+    const [rawRows, urRows] = await Promise.all([
+        d3.csv(dataUrl, (row) => {
+            const year       = Number(row.Year);
+            const population = parsePopulation(row.Population);
+            const rateMid    = parseRateRange(row["Estimated Age-adjusted Death Rate, 16 Categories (in ranges)"]);
+            if (!Number.isFinite(year) || population == null || rateMid == null) return null;
+            return {
+                year, population, rateMid,
+                fips:   String(row.FIPS).padStart(5, "0"),
+                state:  row.State,
+                county: row.County,
+            };
+        }),
+        d3.csv(urbanRuralUrl, (row) => {
+            const num = parseInt(row["2023 Code"]);
+            if (!num) return null;
+            return {
+                fips:  String(row.Location).padStart(5, "0"),
+                group: num <= 3 ? "urban" : "rural",
+            };
+        }),
+    ]);
 
-        if (!Number.isFinite(year) || population == null || rateMid == null) {
-            return null;
-        }
+    const fipsToGroup = new Map(urRows.filter(Boolean).map((r) => [r.fips, r.group]));
 
-        return {
-            year,
-            population,
-            rateMid,
-            state: row.State,
-            county: row.County,
-        };
-    });
-
-    state.rows = rawRows.filter(Boolean);
-    const built = buildSeries(state.rows);
+    state.rows   = rawRows.filter(Boolean);
+    const built  = buildSeries(state.rows, fipsToGroup);
     state.series = built.series;
-    state.years = built.years;
+    state.years  = built.years;
 
-    yearSlider.min = "0";
-    yearSlider.max = String(state.years.length - 1);
-    yearSlider.value = "0";
-    yearSlider.disabled = false;
-    playButton.disabled = false;
+    initChart();
+    updateChart(STEP_CONFIGS[0]);
+    document.querySelectorAll(".step")[0]?.classList.add("is-active");
 
-    updateText();
-    renderChart();
+    const scroller = scrollama();
+    scroller
+        .setup({ step: ".step", offset: 0.55 })
+        .onStepEnter(({ index }) => updateForStep(index));
 
-    yearSlider.addEventListener("input", (event) => {
-        updateSelectedYear(Number(event.target.value));
+    window.addEventListener("resize", () => {
+        scroller.resize();
+        initChart();
+        updateChart(STEP_CONFIGS[state.currentStep], true);
     });
-
-    playButton.addEventListener("click", () => {
-        if (state.playTimer) {
-            stopPlaying();
-        } else {
-            startPlaying();
-        }
-    });
-
-    state.resizeObserver = new ResizeObserver(() => {
-        renderChart();
-    });
-    state.resizeObserver.observe(chartContainer);
 }
 
-init().catch((error) => {
-    console.error(error);
-    yearSummary.textContent = "The chart could not load the CSV. Check that the data file path is correct and that the page is being served from a local web server.";
-    yearLabel.textContent = "Error";
+init().catch((err) => {
+    console.error(err);
+    if (chartContainer) {
+        chartContainer.innerHTML = `<p style="padding:2rem;color:#555;font-family:sans-serif;">
+            Could not load data. Make sure both CSV files are present and the page is served from a local web server.
+        </p>`;
+    }
 });
