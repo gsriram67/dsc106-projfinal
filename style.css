@@ -464,7 +464,103 @@ svg text {
     line-height: 1.65;
 }
 
+/* Scrollytelling Layout Grid */
+#scrolly {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1.35fr; /* Narrative on left, chart on right */
+    gap: 2.2rem;
+    margin-top: 1.5rem;
+}
+
+.scrolly-narrative {
+    padding: 0;
+}
+
+.scrolly-chart {
+    position: sticky;
+    top: 1.5rem;
+    height: fit-content;
+    z-index: 10;
+}
+
+/* Scroll Steps Cards */
+.step {
+    margin: 0 0 38vh; /* Large spacing to create smooth scroll triggers */
+    padding: 1.8rem;
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    border-radius: 4px;
+    opacity: 0.3; /* Faded when inactive */
+    transform: scale(0.97);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.step:last-child {
+    margin-bottom: 30vh;
+}
+
+.step.is-active {
+    opacity: 1; /* Highlighted when active */
+    transform: scale(1);
+    border-color: var(--minimal-slate-900); /* Deep slate-black highlight */
+}
+
+body.theme-dark .step.is-active {
+    border-color: var(--minimal-slate-50); /* Plain light highlight in dark theme */
+}
+
+.step-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--bg-alt);
+    color: var(--text-heading);
+    padding: 0.25rem 0.55rem;
+    border-radius: 2px;
+    margin-bottom: 0.65rem;
+    border: 1px solid var(--panel-border);
+    transition: all 0.22s ease;
+}
+
+.step h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    letter-spacing: -0.019em;
+    transition: color 0.22s ease;
+}
+
+.step p {
+    margin: 0;
+    font-size: 0.96rem;
+    line-height: 1.6;
+    color: var(--text);
+    transition: color 0.22s ease;
+}
+
 /* Responsive Overrides */
+@media (max-width: 900px) {
+    #scrolly {
+        grid-template-columns: 1fr; /* Stack layout on mobile */
+        gap: 1.5rem;
+    }
+
+    .scrolly-chart {
+        position: sticky;
+        top: 0.5rem;
+        z-index: 100;
+    }
+
+    .step {
+        margin-bottom: 28vh; /* Slightly tighter vertical spacing */
+        opacity: 0.45;
+    }
+}
+
 @media (max-width: 840px) {
     .page-shell {
         width: min(1180px, calc(100vw - 1rem));

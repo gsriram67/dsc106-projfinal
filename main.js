@@ -330,6 +330,18 @@ function updateSelectedYear(nextIndex) {
     yearSlider.value = String(nextIndex);
     updateText();
     renderChart();
+
+    // Smoothly scroll the matching narrative step into view if not already highlighted
+    const matchingStep = document.querySelector(`#scrolly .step[data-year-index="${nextIndex}"]`);
+    if (matchingStep && !matchingStep.classList.contains("is-active")) {
+        document.querySelectorAll("#scrolly .step").forEach((el) => el.classList.remove("is-active"));
+        matchingStep.classList.add("is-active");
+        
+        matchingStep.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        });
+    }
 }
 
 function startPlaying() {
@@ -444,6 +456,9 @@ async function init() {
     updateText();
     renderChart();
 
+    // Initialize Scrollama scrollytelling
+    initScrollytelling();
+
     yearSlider.addEventListener("input", (event) => {
         updateSelectedYear(Number(event.target.value));
     });
@@ -460,6 +475,39 @@ async function init() {
         renderChart();
     });
     state.resizeObserver.observe(chartContainer);
+}
+
+function initScrollytelling() {
+    if (typeof scrollama !== "function") {
+        console.warn("Scrollama library not loaded yet.");
+        return;
+    }
+
+    const scroller = scrollama();
+
+    scroller
+        .setup({
+            step: "#scrolly .scrolly-narrative .step",
+            offset: 0.42, // Trigger slightly above viewport center for optimal reading
+            debug: false,
+        })
+        .onStepEnter((response) => {
+            const stepEl = response.element;
+            const yearIndex = Number(stepEl.dataset.yearIndex);
+
+            // Highlight the active step card and dim others
+            document.querySelectorAll("#scrolly .step").forEach((el) => {
+                el.classList.remove("is-active");
+            });
+            stepEl.classList.add("is-active");
+
+            // Update state, redraw chart, and sync slider
+            if (state.selectedIndex !== yearIndex) {
+                updateSelectedYear(yearIndex);
+            }
+        });
+
+    window.addEventListener("resize", scroller.resize);
 }
 
 init().catch((error) => {
