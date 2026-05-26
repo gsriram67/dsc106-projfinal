@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototype Writeup — Drug Mortality Visualization</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        :root {
+            --minimal-slate-50:  #f8fafc;
+            --minimal-slate-100: #f1f5f9;
+            --minimal-slate-200: #e2e8f0;
+            --minimal-slate-300: #cbd5e1;
+            --minimal-slate-400: #94a3b8;
+            --minimal-slate-500: #64748b;
+            --minimal-slate-600: #475569;
+            --minimal-slate-700: #334155;
+            --minimal-slate-800: #1e293b;
+            --minimal-slate-900: #0f172a;
+
+            --bg: #ffffff;
+            --bg-alt: var(--minimal-slate-50);
+            --panel: #ffffff;
+            --panel-border: var(--minimal-slate-200);
+            --text: var(--minimal-slate-700);
+            --text-heading: var(--minimal-slate-900);
+            --muted: var(--minimal-slate-500);
+        }
+
+        html, body {
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            color: var(--text);
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+        }
+
+        .page-shell {
+            width: min(860px, calc(100vw - 2rem));
+            margin: 0 auto;
+            padding: 1.5rem 0 4rem;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.8rem;
+            border-bottom: 2px solid var(--panel-border);
+        }
+
+        .project-tag {
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .back-link {
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text);
+            text-decoration: none;
+            border: 1px solid var(--panel-border);
+            padding: 0.4rem 0.85rem;
+            border-radius: 4px;
+            transition: border-color 0.15s ease;
+        }
+
+        .back-link:hover {
+            border-color: var(--text-heading);
+        }
+
+        .hero-card {
+            background: var(--panel);
+            border: 2px solid var(--panel-border);
+            border-radius: 4px;
+            padding: 1.8rem;
+        }
+
+        .eyebrow {
+            margin: 0 0 0.6rem;
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            color: var(--text-heading);
+        }
+
+        .members {
+            margin: 1.2rem 0 0;
+            color: var(--muted);
+            font-size: 0.88rem;
+            letter-spacing: 0.02em;
+        }
+
+        .section-card {
+            background: var(--panel);
+            border: 2px solid var(--panel-border);
+            border-radius: 4px;
+            padding: 1.8rem;
+        }
+
+        .section-label {
+            margin: 0 0 1rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .section-body {
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        @media (max-width: 640px) {
+            .page-shell {
+                padding-top: 0.75rem;
+            }
+
+            .hero-card,
+            .section-card {
+                padding: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page-shell">
+        <header class="page-header">
+            <span class="project-tag">Prototype Writeup</span>
+            <a href="../index.html" class="back-link">← Back to Visualization</a>
+        </header>
+
+        <section class="hero-card">
+            <p class="eyebrow">DSC 106 Final Project</p>
+            <h1>Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
+            <p class="members">Group Members: Govind Sriram, Prisha Maiti, Zachary Louie, Anand Baidya</p>
+        </section>
+
+        <section class="section-card">
+            <p class="section-label">What we have done so far</p>
+            <p class="section-body">
+                So far, we have built the first interactive prototype of our final project, which investigates drug
+                mortality between rural and urban counties in the United States. We binned each county into four
+                population quartiles (smallest, lower-middle, upper-middle and largest) as a proxy for urbanicity.
+                We then converted each county's reported death-rate interval into a single midpoint value for every
+                year in the NCHS dataset, since the NCHS publishes ranges rather than exact rates in order to protect
+                the privacy of counties. For the visualization, we implemented an animated line chart with a year
+                slider and "Play" button which shows the user how the drug mortality of the four different county
+                groups changed from 1999 to 2015.
+            </p>
+        </section>
+
+        <section class="section-card">
+            <p class="section-label">Most challenging part to design and why</p>
+            <p class="section-body">
+                The most challenging part to design will be the scrollytelling layers. We will have to carefully sync
+                up multiple charts to the scroll state on the page without any random jitters. This needs to be
+                combined with proper narration and writing for each section, which means that we will have to proceed
+                with greater exploratory visualizations. We will also have to take into account the positioning and
+                views of the story and charts, because the animations must both draw attention to the story we are
+                trying to convey, as well as present sufficient information to convince the reader of it. For example,
+                we have a mock storyline on our page alongside a chart plotted from real data — we must be careful to
+                annotate only the most important pieces of information that are relevant instead of writing up notes
+                for each year.
+            </p>
+        </section>
+    </main>
+</body>
+</html>
