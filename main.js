@@ -1,5 +1,5 @@
 
-const dataUrl = "NCHS_-_Drug_Poisoning_Mortality_by_County__United_States_20260522.csv";
+const dataUrl = "mortality_rates_by_state.csv";
 
 const state = {
     rows: [],
@@ -8,6 +8,7 @@ const state = {
     selectedIndex: 0,
     playTimer: null,
     resizeObserver: null,
+    urbanRuralMap: new Map(),
 };
 
 const chartContainer = document.querySelector("#chart");
@@ -18,11 +19,9 @@ const gapValue = document.querySelector("#gap-value");
 const yearSummary = document.querySelector("#year-summary");
 const legendContainer = document.querySelector("#legend");
 
-const populationBands = [
-    { key: "smallest", label: "Smallest counties", color: "#0f766e" },
-    { key: "lower-mid", label: "Lower-middle counties", color: "#3b82f6" },
-    { key: "upper-mid", label: "Upper-middle counties", color: "#f59e0b" },
-    { key: "largest", label: "Largest counties", color: "#c2410c" },
+const urbanRuralGroups = [
+    { key: "rural", label: "Rural counties", color: "var(--accent-4)" }, // Solarized Orange (matches the orange line in the image)
+    { key: "urban", label: "Urban counties", color: "var(--accent-2)" }, // Solarized Blue (matches the blue line in the image)
 ];
 
 const formatRate = d3.format(".1f");
@@ -55,31 +54,28 @@ function parseRateRange(value) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
-function classifyPopulation(population, thresholds) {
-    if (population <= thresholds[0]) {
-        return populationBands[0];
+function classifyUrbanRural(code) {
+    if (!code) {
+        return urbanRuralGroups[0]; // Fallback to Rural counties
     }
-    if (population <= thresholds[1]) {
-        return populationBands[1];
+    const cleanCode = code.trim();
+    // NCHS codes 1, 2, 3, 4 represent Metropolitan (Urban) counties
+    if (cleanCode.startsWith("1") || cleanCode.startsWith("2") || cleanCode.startsWith("3") || cleanCode.startsWith("4")) {
+        return urbanRuralGroups[1]; // Urban counties
     }
-    if (population <= thresholds[2]) {
-        return populationBands[2];
-    }
-    return populationBands[3];
+    // NCHS codes 5 and 6 represent Non-metropolitan/micropolitan (Rural) counties
+    return urbanRuralGroups[0]; // Rural counties
 }
 
-function buildSeries(rows) {
-    const populations = rows.map((row) => row.population).sort(d3.ascending);
-    const thresholds = [
-        d3.quantileSorted(populations, 0.25),
-        d3.quantileSorted(populations, 0.5),
-        d3.quantileSorted(populations, 0.75),
-    ];
-
-    const withGroups = rows.map((row) => ({
-        ...row,
-        group: classifyPopulation(row.population, thresholds),
-    }));
+function buildSeries(rows, urbanRuralMap) {
+    const withGroups = rows.map((row) => {
+        const code = urbanRuralMap.get(row.fips);
+        const group = classifyUrbanRural(code);
+        return {
+            ...row,
+            group,
+        };
+    });
 
     const years = Array.from(new Set(withGroups.map((row) => row.year))).sort(d3.ascending);
     const nested = d3.rollups(
@@ -97,13 +93,13 @@ function buildSeries(rows) {
         nested.map(([year, values]) => [year, new Map(values)])
     );
 
-    const series = populationBands.map((band) => ({
+    const series = urbanRuralGroups.map((band) => ({
         ...band,
         values: years.map((year) => {
             const record = yearLookup.get(year)?.get(band.key);
             return {
                 year,
-                value: record ? record.median : null,
+                value: record ? record.median : null, // Plotted value is the robust median of the county-level rate estimates
                 mean: record ? record.mean : null,
                 count: record ? record.count : 0,
             };
@@ -123,12 +119,13 @@ function updateText() {
         }))
         .filter((item) => item.datum && item.datum.value != null);
 
-    const smallest = selectedValues[0];
-    const largest = selectedValues[selectedValues.length - 1];
-    const gap = smallest && largest ? largest.datum.value - smallest.datum.value : null;
+    const smallest = selectedValues[0]; // Rural counties (Orange)
+    const largest = selectedValues[selectedValues.length - 1]; // Urban counties (Blue)
+    // To find the gap: we take the absolute difference between Urban and Rural
+    const gap = smallest && largest ? Math.abs(largest.datum.value - smallest.datum.value) : null;
 
     yearLabel.textContent = selectedYear ?? "—";
-    gapValue.textContent = gap == null ? "—" : `${formatRate(gap)} points`;
+    gapValue.innerHTML = gap == null ? "—" : `<span class="gap-number">${formatRate(gap)}</span> <span class="gap-unit">deaths per 100k people</span>`;
 
     const firstYear = state.years[0];
     const lastYear = state.years[state.years.length - 1];
@@ -141,11 +138,11 @@ function updateText() {
 
     const trendText =
         startGap != null && endGap != null
-            ? `Across the full time span, the smallest-vs-largest county gap ${Math.abs(endGap) < Math.abs(startGap) ? "narrows" : "widens"} from ${formatRate(startGap)} in ${firstYear} to ${formatRate(endGap)} in ${lastYear}.`
+            ? `Across the full time span, the rural-vs-urban gap ${Math.abs(endGap) < Math.abs(startGap) ? "narrows" : "widens"} from ${formatRate(startGap)} in ${firstYear} to ${formatRate(endGap)} in ${lastYear}.`
             : "";
 
     yearSummary.textContent = selectedValues.length
-        ? `In ${selectedYear}, the median midpoint rate was ${formatRate(smallest.datum.value)} in the smallest counties and ${formatRate(largest.datum.value)} in the largest counties. ${trendText}`
+        ? `In ${selectedYear}, the median estimated rate was ${formatRate(smallest.datum.value)} in rural counties and ${formatRate(largest.datum.value)} in urban counties. ${trendText}`
         : "No comparable values were available for the selected year.";
 }
 
@@ -153,6 +150,13 @@ function renderChart() {
     if (!state.rows.length || !state.years.length) {
         return;
     }
+
+    // Get current container width to compute correct proportional height
+    const width = chartContainer.clientWidth || 900;
+    const height = Math.max(460, Math.round(width * 0.58));
+
+    // Lock chart container height dynamically to prevent page collapse and scroll jump during redraw
+    chartContainer.style.minHeight = `${height}px`;
 
     chartContainer.innerHTML = "";
     legendContainer.innerHTML = "";
@@ -168,8 +172,6 @@ function renderChart() {
         )
         .join("");
 
-    const width = chartContainer.clientWidth || 900;
-    const height = Math.max(460, Math.round(width * 0.58));
     const margin = { top: 28, right: 28, bottom: 58, left: 72 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -210,31 +212,31 @@ function renderChart() {
         .append("g")
         .attr("transform", `translate(0, ${height - margin.bottom})`)
         .call(xAxis)
-        .call((group) => group.selectAll("text").attr("fill", "#526174"))
-        .call((group) => group.selectAll("path, line").attr("stroke", "#b7c3cf"));
+        .call((group) => group.selectAll("text").attr("fill", "var(--chart-text)"))
+        .call((group) => group.selectAll("path, line").attr("stroke", "var(--panel-border)"));
 
     svg
         .append("g")
         .attr("transform", `translate(${margin.left}, 0)`)
         .call(yAxis)
-        .call((group) => group.selectAll("text").attr("fill", "#526174"))
-        .call((group) => group.selectAll("path, line").attr("stroke", "#d7e0e8"))
+        .call((group) => group.selectAll("text").attr("fill", "var(--chart-text)"))
+        .call((group) => group.selectAll("path, line").attr("stroke", "var(--chart-grid)"))
         .call((group) => group.selectAll(".tick line").attr("opacity", 0.45));
 
     svg
         .append("text")
         .attr("x", margin.left)
         .attr("y", 18)
-        .attr("fill", "#526174")
+        .attr("fill", "var(--chart-text)")
         .attr("font-size", 13)
-        .text("Estimated death-rate midpoint by county population group");
+        .text("Median estimated age-adjusted death rate by urban/rural status (per 100k)");
 
     const line = d3
         .line()
         .defined((datum) => datum.value != null)
         .x((datum) => x(datum.year))
         .y((datum) => y(datum.value))
-        .curve(d3.curveMonotoneX);
+        .curve(d3.curveCatmullRom);
 
     const seriesGroup = svg.append("g");
 
@@ -243,7 +245,7 @@ function renderChart() {
         .data(state.series)
         .join("path")
         .attr("class", "series-line")
-        .attr("d", (series) => line(series.values))
+        .attr("d", (series) => line(series.values.slice(0, state.selectedIndex + 1)))
         .attr("fill", "none")
         .attr("stroke", (series) => series.color)
         .attr("stroke-width", 3)
@@ -254,6 +256,7 @@ function renderChart() {
         .selectAll("circle.series-point")
         .data(state.series.flatMap((series) =>
             series.values
+                .slice(0, state.selectedIndex + 1) // Only show points up to the selected year
                 .filter((datum) => datum.value != null)
                 .map((datum) => ({ ...datum, label: series.label, color: series.color }))
         ))
@@ -263,13 +266,13 @@ function renderChart() {
         .attr("cy", (datum) => y(datum.value))
         .attr("r", 3.5)
         .attr("fill", (datum) => datum.color)
-        .attr("stroke", "white")
+        .attr("stroke", "var(--chart-bg)")
         .attr("stroke-width", 1.2)
         .on("mouseenter", (event, datum) => {
             tooltip
                 .style("opacity", 1)
                 .html(
-                    `<strong>${datum.label}</strong>${datum.year}<br>Median midpoint: ${formatRate(datum.value)}<br>Counties: ${datum.count}`
+                    `<strong>${datum.label}</strong>${datum.year}<br>Median estimated rate: ${formatRate(datum.value)}<br>Counties: ${datum.count}`
                 );
         })
         .on("mousemove", (event) => {
@@ -290,7 +293,7 @@ function renderChart() {
         .attr("x2", x(selectedYear))
         .attr("y1", margin.top)
         .attr("y2", height - margin.bottom)
-        .attr("stroke", "#8aa0b6")
+        .attr("stroke", "var(--muted)")
         .attr("stroke-dasharray", "6 6")
         .attr("stroke-width", 1.4);
 
@@ -315,7 +318,7 @@ function renderChart() {
         .append("text")
         .attr("x", x(selectedYear) + 8)
         .attr("y", margin.top + 16)
-        .attr("fill", "#334155")
+        .attr("fill", "var(--text-heading)")
         .attr("font-size", 13)
         .attr("font-weight", 700)
         .text(`Selected: ${selectedYear}`);
@@ -349,27 +352,86 @@ function stopPlaying() {
     playButton.textContent = "Play";
 }
 
-async function init() {
-    const rawRows = await d3.csv(dataUrl, (row) => {
-        const year = Number(row.Year);
-        const population = parsePopulation(row.Population);
-        const rateMid = parseRateRange(row["Estimated Age-adjusted Death Rate, 16 Categories (in ranges)"]);
+function initTheme() {
+    const themeToggleBtn = document.querySelector("#theme-toggle");
+    const themeIcon = themeToggleBtn.querySelector(".theme-icon");
+    const themeLabel = themeToggleBtn.querySelector(".theme-label");
 
-        if (!Number.isFinite(year) || population == null || rateMid == null) {
-            return null;
+    const savedTheme = localStorage.getItem("solarized-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
+
+    setTheme(initialTheme);
+
+    themeToggleBtn.addEventListener("click", () => {
+        const currentTheme = document.body.classList.contains("theme-dark") ? "dark" : "light";
+        const nextTheme = currentTheme === "light" ? "dark" : "light";
+        setTheme(nextTheme);
+    });
+
+    function setTheme(theme) {
+        if (theme === "dark") {
+            document.body.classList.remove("theme-light");
+            document.body.classList.add("theme-dark");
+            if (themeIcon) themeIcon.textContent = "☾";
+            if (themeLabel) themeLabel.textContent = "Minimal Dark";
+            localStorage.setItem("solarized-theme", "dark");
+        } else {
+            document.body.classList.remove("theme-dark");
+            document.body.classList.add("theme-light");
+            if (themeIcon) themeIcon.textContent = "☀";
+            if (themeLabel) themeLabel.textContent = "Minimal Light";
+            localStorage.setItem("solarized-theme", "light");
         }
+        
+        if (state.rows && state.rows.length > 0) {
+            renderChart();
+        }
+    }
+}
 
-        return {
-            year,
-            population,
-            rateMid,
-            state: row.State,
-            county: row.County,
-        };
+const urbanRuralUrl = "county_urban_rural.csv";
+
+async function init() {
+    initTheme();
+
+    const [rawRows, rawUrbanRural] = await Promise.all([
+        d3.csv(dataUrl, (row) => {
+            const year = Number(row.Year);
+            const population = parsePopulation(row.Population);
+            const rateMid = parseRateRange(row["Estimated Age-adjusted Death Rate, 16 Categories (in ranges)"]);
+
+            if (!Number.isFinite(year) || population == null || rateMid == null) {
+                return null;
+            }
+
+            return {
+                year,
+                population,
+                rateMid,
+                state: row.State,
+                county: row.County,
+                fips: row.FIPS ? String(row.FIPS).trim().padStart(5, "0") : null,
+            };
+        }),
+        d3.csv(urbanRuralUrl, (row) => {
+            return {
+                fips: row.Location ? String(row.Location).trim().padStart(5, "0") : null,
+                code2023: row["2023 Code"] ? String(row["2023 Code"]).trim() : null,
+            };
+        })
+    ]);
+
+    // Create rapid lookup table for FIPS -> NCHS classification code
+    state.urbanRuralMap.clear();
+    rawUrbanRural.forEach((row) => {
+        if (row.fips && row.code2023) {
+            state.urbanRuralMap.set(row.fips, row.code2023);
+        }
     });
 
     state.rows = rawRows.filter(Boolean);
-    const built = buildSeries(state.rows);
+    const built = buildSeries(state.rows, state.urbanRuralMap);
     state.series = built.series;
     state.years = built.years;
 
