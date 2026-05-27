@@ -148,34 +148,42 @@
         </div>
 
         <!-- County Explorer -->
-        <section class="hero-card county-explorer-intro" id="county-explorer">
-            <p class="eyebrow">County Explorer</p>
-            <h2>Search Drug Mortality by County</h2>
-            <p class="deck">
-                Type a county name to view estimated age-adjusted drug mortality data from 1999 to 2015.
-            </p>
-        </section>
+        <section class="county-explorer-card" id="county-explorer">
+            <div class="county-explorer-layout">
 
-        <section class="county-explorer-card">
-            <div class="county-search-row">
-                <div class="county-input-wrapper">
-                    <input
-                        id="county-search"
-                        type="text"
-                        placeholder="Example: San Diego County, CA"
-                        autocomplete="off"
-                        aria-autocomplete="list"
-                        aria-controls="county-suggestions"
-                    >
-                    <ul id="county-suggestions" class="county-suggestions" role="listbox" hidden></ul>
+                <!-- Left: interactive map + search -->
+                <div class="county-map-panel">
+                    <p class="eyebrow">County Explorer</p>
+                    <h2>Drug Mortality by County</h2>
+                    <div class="county-search-row">
+                        <div class="county-input-wrapper">
+                            <input
+                                id="county-search"
+                                type="text"
+                                placeholder="e.g. King County, WA"
+                                autocomplete="off"
+                                aria-autocomplete="list"
+                                aria-controls="county-suggestions"
+                            >
+                            <ul id="county-suggestions" class="county-suggestions" role="listbox" hidden></ul>
+                        </div>
+                        <button id="county-search-button" type="button">View</button>
+                    </div>
+                    <div id="us-map-canvas" class="us-map-canvas"></div>
+                    <div class="us-map-controls">
+                        <div class="us-map-legend">
+                            <span class="us-map-legend-item us-map-legend-urban">Urban</span>
+                            <span class="us-map-legend-item us-map-legend-rural">Rural</span>
+                        </div>
+                        <button id="us-map-reset" class="us-map-reset-btn" hidden>Reset zoom</button>
+                    </div>
                 </div>
-                <button id="county-search-button" type="button">View</button>
-            </div>
-            <p class="search-help">
-                Type the full county name and state for the most accurate result. Example: <strong>San Diego County, CA</strong>.
-            </p>
-            <div id="county-result" class="county-result">
-                <p>Search for a county to view its data.</p>
+
+                <!-- Right: county detail -->
+                <div class="county-detail-panel">
+                    <div id="county-result" class="county-result"></div>
+                </div>
+
             </div>
         </section>
     </main>
@@ -184,6 +192,7 @@
     <script src="https://unpkg.com/scrollama"></script>
     <script src="theme.js"></script>
     <script src="scrollytelling.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
     <script src="county-explorer.js"></script>
     <script>
         document.getElementById("explore-anchor").addEventListener("click", function (e) {
