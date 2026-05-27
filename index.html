@@ -24,7 +24,7 @@
             </p>
             <p class="members">Group Members: Govind Sriram, Prisha Maiti, Zachary Louie, Anand Baidya</p>
 
-            <a href="county-explorer/index.html" class="explorer-link">
+            <a href="#county-explorer" class="explorer-link" id="explore-anchor">
                 Explore data for a specific county →
             </a>
         </section>
@@ -146,11 +146,50 @@
                 </section>
             </div>
         </div>
+
+        <!-- County Explorer -->
+        <section class="hero-card county-explorer-intro" id="county-explorer">
+            <p class="eyebrow">County Explorer</p>
+            <h2>Search Drug Mortality by County</h2>
+            <p class="deck">
+                Type a county name to view estimated age-adjusted drug mortality data from 1999 to 2015.
+            </p>
+        </section>
+
+        <section class="county-explorer-card">
+            <div class="county-search-row">
+                <div class="county-input-wrapper">
+                    <input
+                        id="county-search"
+                        type="text"
+                        placeholder="Example: San Diego County, CA"
+                        autocomplete="off"
+                        aria-autocomplete="list"
+                        aria-controls="county-suggestions"
+                    >
+                    <ul id="county-suggestions" class="county-suggestions" role="listbox" hidden></ul>
+                </div>
+                <button id="county-search-button" type="button">View</button>
+            </div>
+            <p class="search-help">
+                Type the full county name and state for the most accurate result. Example: <strong>San Diego County, CA</strong>.
+            </p>
+            <div id="county-result" class="county-result">
+                <p>Search for a county to view its data.</p>
+            </div>
+        </section>
     </main>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/scrollama"></script>
     <script src="theme.js"></script>
-    <script src="main.js"></script>
+    <script src="scrollytelling.js"></script>
+    <script src="county-explorer.js"></script>
+    <script>
+        document.getElementById("explore-anchor").addEventListener("click", function (e) {
+            e.preventDefault();
+            document.getElementById("county-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    </script>
 </body>
 </html>
