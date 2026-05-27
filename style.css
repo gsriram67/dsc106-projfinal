@@ -587,3 +587,26 @@ body.theme-dark .step.is-active {
         min-height: 460px;
     }
 }
+
+/* County Search */
+.explorer-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.6rem 1.4rem;
+    border: 1px solid var(--btn-border);
+    border-radius: 2px;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.explorer-link:hover {
+    opacity: 0.85;
+}

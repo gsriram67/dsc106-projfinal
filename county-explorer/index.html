@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>County Drug Mortality Explorer</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <main class="page-shell">
+        <header class="page-header">
+            <span class="project-tag">County Explorer</span>
+
+            <div class="header-actions">
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Minimal Theme">
+                    <span class="theme-icon">☀</span>
+                    <span class="theme-label">Minimal Light</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="hero-card">
+            <p class="eyebrow">Explore County Data</p>
+            <h1>Search Drug Mortality by County</h1>
+            <p class="deck">
+                Type a county name to view estimated age-adjusted drug mortality data from 1999 to 2015.
+            </p>
+
+            <a href="../index.html" class="explorer-link">
+                Back to story
+            </a>
+        </section>
+
+        <section class="county-explorer-card">
+            <div class="county-search-row">
+                <input
+                    id="county-search"
+                    type="text"
+                    placeholder="Example: San Diego County, CA"
+                    autocomplete="off"
+                >
+                <button id="county-search-button" type="button">View</button>
+            </div>
+
+            <p class="search-help">
+                Type the full county name and state for the most accurate result. Example: <strong>San Diego County, CA</strong>.
+            </p>
+
+            <div id="county-result" class="county-result">
+                <p>Search for a county to view its data.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="../theme.js"></script>
+    <script>
+        initTheme();
+    </script>
+    <script src="county-explorer.js"></script>
+</body>
+</html>
