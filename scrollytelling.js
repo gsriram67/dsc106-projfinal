@@ -126,6 +126,7 @@ function updateText() {
     yearLabel.textContent = selectedYear ?? "—";
     gapValue.innerHTML = gap == null ? "—" : `<span class="gap-number">${formatRate(gap)}</span> <span class="gap-unit">deaths per 100k people</span>`;
 
+
     const firstYear = state.years[0];
     const lastYear = state.years[state.years.length - 1];
     const firstSmall = state.series[0]?.values[0]?.value;
@@ -286,15 +287,40 @@ function renderChart() {
 
     const selectedYear = state.years[state.selectedIndex];
 
+    const lineX = x(selectedYear);
+
     svg
         .append("line")
-        .attr("x1", x(selectedYear))
-        .attr("x2", x(selectedYear))
+        .attr("x1", lineX)
+        .attr("x2", lineX)
         .attr("y1", margin.top)
         .attr("y2", height - margin.bottom)
         .attr("stroke", "var(--muted)")
         .attr("stroke-dasharray", "6 6")
         .attr("stroke-width", 1.4);
+
+    // YoY label near top of dashed line
+    if (state.selectedIndex > 0) {
+        const prevIndex = state.selectedIndex - 1;
+        const yoyPcts = state.series
+            .map((s) => {
+                const prev = s.values[prevIndex]?.value;
+                const curr = s.values[state.selectedIndex]?.value;
+                return prev != null && curr != null ? ((curr - prev) / prev) * 100 : null;
+            })
+            .filter((v) => v != null);
+        const avg = yoyPcts.length ? yoyPcts.reduce((a, b) => a + b, 0) / yoyPcts.length : null;
+        if (avg != null) {
+            const nearRight = lineX > width - margin.right - 60;
+            svg.append("text")
+                .attr("x", nearRight ? lineX - 8 : lineX + 8)
+                .attr("y", margin.top + 14)
+                .attr("fill", "var(--muted)")
+                .attr("font-size", 12)
+                .attr("text-anchor", nearRight ? "end" : "start")
+                .text(`${avg >= 0 ? "+" : ""}${formatRate(avg)}% YoY`);
+        }
+    }
 
     const selectedGroup = seriesGroup
         .selectAll("circle.selected-point")
@@ -313,14 +339,6 @@ function renderChart() {
         .attr("stroke", (datum) => datum.color)
         .attr("stroke-width", 2.5);
 
-    svg
-        .append("text")
-        .attr("x", x(selectedYear) + 8)
-        .attr("y", margin.top + 16)
-        .attr("fill", "var(--text-heading)")
-        .attr("font-size", 13)
-        .attr("font-weight", 700)
-        .text(`Selected: ${selectedYear}`);
 
 }
 
