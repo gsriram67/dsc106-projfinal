@@ -1,4 +1,5 @@
 const dataUrl = "mortality_rates_by_state.csv";
+const bgTopoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
 
 const state = {
     rows: [],
@@ -24,6 +25,101 @@ const urbanRuralGroups = [
 ];
 
 const formatRate = d3.format(".1f");
+
+// Background choropleth state
+const bgYearRateMap = new Map(); // year -> Map<fips, rateMid>
+let bgColorScale = null;
+
+function buildBgYearRateMap(rows) {
+    bgYearRateMap.clear();
+    for (const row of rows) {
+        if (row.fips == null || row.rateMid == null) continue;
+        if (!bgYearRateMap.has(row.year)) bgYearRateMap.set(row.year, new Map());
+        bgYearRateMap.get(row.year).set(row.fips, row.rateMid);
+    }
+}
+
+function renderBgMap(topoJson) {
+    const container = document.querySelector("#scrolly-bg-map");
+    if (!container || typeof topojson === "undefined") return;
+
+    container.innerHTML = "";
+
+    const allRates = [];
+    bgYearRateMap.forEach((m) => m.forEach((v) => allRates.push(v)));
+    const maxRate = d3.max(allRates) || 40;
+    bgColorScale = d3.scaleSequential().domain([0, maxRate]).interpolator(d3.interpolateYlOrRd);
+
+    const svg = d3.select(container)
+        .append("svg")
+        .attr("viewBox", "0 0 960 500")
+        .attr("preserveAspectRatio", "xMidYMid meet");
+
+    const projection = d3.geoAlbersUsa().scale(1280).translate([480, 250]);
+    const path = d3.geoPath().projection(projection);
+
+    const selectedYear = state.years[state.selectedIndex];
+    const counties = topojson.feature(topoJson, topoJson.objects.counties);
+    const states = topojson.mesh(topoJson, topoJson.objects.states, (a, b) => a !== b);
+
+    svg.append("g")
+        .attr("id", "bg-counties")
+        .selectAll("path")
+        .data(counties.features)
+        .join("path")
+        .attr("d", path)
+        .attr("fill", (d) => {
+            const fips = String(d.id).padStart(5, "0");
+            const rate = bgYearRateMap.get(selectedYear)?.get(fips);
+            return rate != null ? bgColorScale(rate) : "#777";
+        })
+        .attr("stroke", "none");
+
+    svg.append("path")
+        .datum(states)
+        .attr("d", path)
+        .attr("fill", "none")
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 0.6)
+        .attr("stroke-opacity", 0.4);
+
+    // Fade in when #scrolly is visible, fade out when county explorer appears
+    let scrollyVisible = false;
+    let explorerVisible = false;
+    const setMapOpacity = () => {
+        container.style.opacity = (scrollyVisible && !explorerVisible) ? "1" : "0";
+    };
+
+    const scrollyEl = document.querySelector("#scrolly");
+    if (scrollyEl) {
+        new IntersectionObserver((entries) => {
+            scrollyVisible = entries[0].isIntersecting;
+            setMapOpacity();
+        }, { threshold: 0 }).observe(scrollyEl);
+    }
+
+    const explorerEl = document.querySelector("#county-explorer");
+    if (explorerEl) {
+        new IntersectionObserver((entries) => {
+            explorerVisible = entries[0].isIntersecting;
+            setMapOpacity();
+        }, { threshold: 0 }).observe(explorerEl);
+    }
+}
+
+function updateBgMap() {
+    if (!bgColorScale) return;
+    const selectedYear = state.years[state.selectedIndex];
+    d3.select("#bg-counties")
+        .selectAll("path")
+        .transition()
+        .duration(600)
+        .attr("fill", (d) => {
+            const fips = String(d.id).padStart(5, "0");
+            const rate = bgYearRateMap.get(selectedYear)?.get(fips);
+            return rate != null ? bgColorScale(rate) : "#777";
+        });
+}
 
 function parsePopulation(value) {
     const parsed = Number(String(value).replace(/,/g, ""));
@@ -347,6 +443,7 @@ function updateSelectedYear(nextIndex) {
     yearSlider.value = String(nextIndex);
     updateText();
     renderChart();
+    updateBgMap();
 
     // Smoothly scroll the matching narrative step into view if not already highlighted
     const matchingStep = document.querySelector(`#scrolly .step[data-year-index="${nextIndex}"]`);
@@ -386,7 +483,7 @@ const urbanRuralUrl = "county_urban_rural.csv";
 async function init() {
     initTheme();
 
-    const [rawRows, rawUrbanRural] = await Promise.all([
+    const [csvResult, urbanRuralResult, topoResult] = await Promise.allSettled([
         d3.csv(dataUrl, (row) => {
             const year = Number(row.Year);
             const population = parsePopulation(row.Population);
@@ -410,8 +507,15 @@ async function init() {
                 fips: row.Location ? String(row.Location).trim().padStart(5, "0") : null,
                 code2023: row["2023 Code"] ? String(row["2023 Code"]).trim() : null,
             };
-        })
+        }),
+        d3.json(bgTopoUrl),
     ]);
+
+    if (csvResult.status !== "fulfilled") throw csvResult.reason;
+    if (urbanRuralResult.status !== "fulfilled") throw urbanRuralResult.reason;
+
+    const rawRows = csvResult.value;
+    const rawUrbanRural = urbanRuralResult.value;
 
     // Create rapid lookup table for FIPS -> NCHS classification code
     state.urbanRuralMap.clear();
@@ -434,6 +538,12 @@ async function init() {
 
     updateText();
     renderChart();
+
+    // Background choropleth map
+    buildBgYearRateMap(state.rows);
+    if (topoResult.status === "fulfilled") {
+        renderBgMap(topoResult.value);
+    }
 
     // Initialize Scrollama scrollytelling
     initScrollytelling();

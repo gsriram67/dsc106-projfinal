@@ -473,8 +473,26 @@ svg text {
     margin-top: 1.5rem;
 }
 
+.scrolly-bg-map {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.9s ease;
+}
+
+.scrolly-bg-map svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0.2;
+}
+
 .scrolly-narrative {
     padding: 0;
+    position: relative;
+    z-index: 1;
 }
 
 .scrolly-chart {
