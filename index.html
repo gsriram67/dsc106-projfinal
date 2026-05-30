@@ -18,6 +18,12 @@
         <section class="hero-card">
             <p class="eyebrow">DSC 106 Final Project</p>
             <h1>Are Urban and Rural Drug Mortality Rates Converging Over Time?</h1>
+            <p class="hero-hook">
+                Most often, the blame for the drug epidemic in the U.S. is placed on big cities and
+                cross-border populations (especially the southern border). The assumption has always
+                been that rural America is more insulated &mdash; that distance from urban centers
+                offers some protection. But does the data support that? And what about the border?
+            </p>
             <p class="deck">
                 This visualization uses the official 2023 CDC NCHS Urban-Rural classifications to compare the
                 median estimated age-adjusted drug mortality rates between urban and rural counties across years. Scroll down to see the story unfold.
@@ -146,6 +152,82 @@
                 </section>
             </div>
         </div>
+
+        <!-- Border Counties Analysis -->
+        <section class="border-analysis-card" id="border-analysis">
+
+            <!-- Top: two-column header -->
+            <div class="border-header">
+                <div class="border-header-text">
+                    <p class="eyebrow">Regional Spotlight &middot; 2015</p>
+                    <h2 class="border-analysis-heading">Drug Mortality Along the U.S.&ndash;Mexico Border</h2>
+                    <p class="border-analysis-deck">
+                        By 2015&mdash;the year urban and rural rates fully converged nationally&mdash;the 24 counties
+                        lining the U.S.&ndash;Mexico border told a strikingly different story. Despite the peak of the
+                        synthetic-opioid wave, most border counties recorded mortality rates <strong>well below</strong>
+                        both the national and their state medians. This pattern aligns with the <em>Hispanic health
+                        paradox</em>: predominantly Hispanic communities have historically shown lower drug-induced
+                        mortality, even accounting for socioeconomic disadvantage.
+                    </p>
+                </div>
+
+                <!-- Big callout number -->
+                <div class="border-callout">
+                    <span class="border-callout-num">18</span>
+                    <span class="border-callout-of">of 24</span>
+                    <span class="border-callout-label">border counties below<br>the national median</span>
+                </div>
+            </div>
+
+            <!-- Stat boxes -->
+            <div class="border-mini-stats">
+                <div class="border-mini-stat">
+                    <div class="border-mini-top">
+                        <span class="border-mini-num border-mini-num--orange">6</span>
+                        <span class="border-mini-denom">/ 24</span>
+                    </div>
+                    <p class="border-mini-label">Above national median</p>
+                    <div class="border-mini-bar-wrap">
+                        <div class="border-mini-bar" style="width: 25%"></div>
+                    </div>
+                    <p class="border-mini-note">National median: 15.1 per 100k</p>
+                </div>
+                <div class="border-mini-stat">
+                    <div class="border-mini-top">
+                        <span class="border-mini-num">2</span>
+                        <span class="border-mini-denom">/ 24</span>
+                    </div>
+                    <p class="border-mini-label">Above state median</p>
+                    <div class="border-mini-bar-wrap">
+                        <div class="border-mini-bar border-mini-bar--muted" style="width: 8.3%"></div>
+                    </div>
+                    <div class="border-exception-list">
+                        <div class="border-exception">
+                            <span class="border-exception-dot"></span>
+                            <span>Pima Co., AZ</span>
+                            <span class="border-exception-rate">31.0</span>
+                        </div>
+                        <div class="border-exception">
+                            <span class="border-exception-dot"></span>
+                            <span>Brewster Co., TX</span>
+                            <span class="border-exception-rate">21.1</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-mini-stat">
+                    <div class="border-mini-top">
+                        <span class="border-mini-num border-mini-num--muted">24</span>
+                    </div>
+                    <p class="border-mini-label">Total border counties</p>
+                    <div class="border-state-chips">
+                        <span class="state-chip">CA</span>
+                        <span class="state-chip">AZ</span>
+                        <span class="state-chip">NM</span>
+                        <span class="state-chip">TX</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- County Explorer -->
         <section class="county-explorer-card" id="county-explorer">

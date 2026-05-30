@@ -195,9 +195,18 @@ h1 {
     transition: color 0.22s ease;
 }
 
+.hero-hook {
+    max-width: 72ch;
+    margin: 1.1rem 0 0;
+    color: var(--text-heading);
+    font-size: 1.15rem;
+    line-height: 1.65;
+    font-style: italic;
+}
+
 .deck {
     max-width: 72ch;
-    margin: 1rem 0 0;
+    margin: 0.75rem 0 0;
     color: var(--text);
     font-size: 1.05rem;
     line-height: 1.6;
@@ -586,6 +595,383 @@ body.theme-dark .step.is-active {
     .chart-container {
         min-height: 460px;
     }
+}
+
+/* Border Analysis Section */
+.border-analysis-card {
+    padding: 1.8rem;
+    border: 2px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--panel);
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+/* Two-column header: text + big callout number */
+.border-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 1.8rem;
+}
+
+@media (max-width: 780px) {
+    .border-header { grid-template-columns: 1fr; }
+}
+
+.border-analysis-heading {
+    margin: 0.3rem 0 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.border-analysis-deck {
+    max-width: 72ch;
+    margin: 0.9rem 0 0;
+    color: var(--text);
+    font-size: 0.97rem;
+    line-height: 1.65;
+}
+
+/* Big callout block (top-right) */
+.border-callout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.2rem 1.6rem;
+    border: 2px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--bg-alt);
+    min-width: 160px;
+    flex-shrink: 0;
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.border-callout-num {
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.border-callout-of {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+    margin-top: 0.1rem;
+    transition: color 0.22s ease;
+}
+
+.border-callout-label {
+    margin-top: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    line-height: 1.5;
+    transition: color 0.22s ease;
+}
+
+/* Dot matrix + mini stats row */
+.border-visual-row {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 780px) {
+    .border-visual-row { grid-template-columns: 1fr; }
+}
+
+/* Dot matrix card */
+.border-matrix-card {
+    padding: 1.2rem 1.4rem;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--bg-alt);
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.border-card-label {
+    margin: 0 0 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.22s ease;
+}
+
+.dot-matrix {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 1rem;
+}
+
+.dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    cursor: default;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.dot:hover { transform: scale(1.25); }
+
+.dot-sm {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.dot-above        { background: var(--accent-1); }
+.dot-below        { background: var(--panel-border); border: 1px solid var(--minimal-slate-300); }
+.dot-border-below { background: rgba(234,88,12,0.22); border: 1px solid rgba(234,88,12,0.35); }
+.dot-nonborder    { background: var(--panel-border); border: 1px solid var(--minimal-slate-300); }
+
+body.theme-dark .dot-below,
+body.theme-dark .dot-nonborder {
+    background: var(--minimal-slate-700);
+    border-color: var(--minimal-slate-600);
+}
+
+/* Border region map */
+.border-map-canvas {
+    position: relative;
+    width: 100%;
+    min-height: 260px;
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    background: var(--chart-bg);
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+    transition: border-color 0.22s ease, background-color 0.22s ease;
+}
+
+.border-map-canvas svg { display: block; }
+
+.dot-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+}
+
+.dot-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    transition: color 0.22s ease;
+}
+
+/* Mini stats — horizontal row of 3 */
+.border-mini-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 700px) {
+    .border-mini-stats { grid-template-columns: 1fr 1fr; }
+}
+
+.border-mini-stat {
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--bg-alt);
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.border-mini-top {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    margin-bottom: 0.15rem;
+}
+
+.border-mini-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.border-mini-num--orange { color: var(--accent-1); }
+.border-mini-num--muted  { color: var(--text-heading); }
+
+.border-mini-denom {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+    transition: color 0.22s ease;
+}
+
+.border-mini-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.22s ease;
+}
+
+.border-mini-bar-wrap {
+    height: 4px;
+    background: var(--panel-border);
+    border-radius: 2px;
+    margin-bottom: 0.55rem;
+    overflow: hidden;
+    transition: background-color 0.22s ease;
+}
+
+.border-mini-bar {
+    height: 100%;
+    background: var(--accent-1);
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.border-mini-bar--muted { background: var(--muted); }
+
+.border-mini-note {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--muted);
+    transition: color 0.22s ease;
+}
+
+/* Exception list (the 2 counties above state median) */
+.border-exception-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
+}
+
+.border-exception {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    transition: color 0.22s ease;
+}
+
+.border-exception-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-1);
+    flex-shrink: 0;
+}
+
+.border-exception-rate {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: var(--accent-1);
+}
+
+/* State chips */
+.border-state-chips {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+
+.state-chip {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 2px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-heading);
+    transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease;
+}
+
+/* Collapsible table */
+.border-table-toggle {
+    border-top: 1px solid var(--panel-border);
+    padding-top: 1.2rem;
+    transition: border-color 0.22s ease;
+}
+
+.border-table-toggle summary {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.15s ease;
+}
+
+.border-table-toggle summary::-webkit-details-marker { display: none; }
+
+.border-table-toggle summary::before {
+    content: "▶";
+    font-size: 0.6rem;
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.border-table-toggle[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.border-table-toggle summary:hover { color: var(--text-heading); }
+
+.border-county-table { margin-top: 1rem; }
+
+.border-above {
+    color: var(--accent-1);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.border-below {
+    color: var(--muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.border-table-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
 }
 
 /* County Explorer */
