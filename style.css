@@ -1515,8 +1515,39 @@ body.theme-dark .dot-nonborder {
     color: var(--text);
 }
 
+.game-streak {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.1rem 0 0;
+    min-height: 1.4rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.game-streak-flames {
+    letter-spacing: 0.05em;
+    line-height: 1;
+    animation: streak-pop 0.28s ease;
+}
+
+.game-streak-count {
+    color: var(--text-heading);
+}
+
+.game-streak-empty {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+@keyframes streak-pop {
+    0% { transform: scale(0.7); opacity: 0.4; }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 .game-score {
-    margin: 1rem 0 0;
+    margin: 0.45rem 0 0;
     color: var(--muted);
     font-size: 0.9rem;
     font-weight: 700;
@@ -1546,6 +1577,70 @@ body.theme-dark .dot-nonborder {
     transform: translateY(1px);
 }
 
+.game-difficulty {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.1rem;
+}
+
+.game-difficulty-label {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.game-difficulty-options {
+    display: inline-flex;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.game-diff-btn {
+    padding: 0.5rem 1.15rem;
+    border: none;
+    border-right: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.game-diff-btn:last-child {
+    border-right: none;
+}
+
+.game-diff-btn:hover:not(.is-active) {
+    background: var(--bg-alt);
+}
+
+.game-diff-btn.is-active {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+}
+
+.game-empty {
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.game-empty p {
+    margin: 0 0 0.6rem;
+}
+
+.game-empty a {
+    color: var(--accent-2);
+    font-weight: 700;
+}
+
 @media (max-width: 700px) {
     .game-options {
         grid-template-columns: 1fr;
@@ -1553,5 +1648,14 @@ body.theme-dark .dot-nonborder {
 
     .game-option {
         min-height: auto;
+    }
+
+    .game-difficulty-options {
+        width: 100%;
+    }
+
+    .game-diff-btn {
+        flex: 1;
+        text-align: center;
     }
 }

@@ -274,8 +274,19 @@
             <p class="eyebrow">Mini Game</p>
             <h2>Which County Was Highest?</h2>
             <p class="game-description">
-                A random year and four counties are selected from the dataset. Pick the county with the highest estimated drug mortality rate.
+                Test what you spotted while scrolling. Each difficulty draws on a different part of this page &mdash;
+                the national trend, the border spotlight, and the closest county calls &mdash; and the rates get
+                closer together (harder to call) as you move up.
             </p>
+
+            <div class="game-difficulty" role="group" aria-label="Difficulty">
+                <span class="game-difficulty-label">Difficulty</span>
+                <div class="game-difficulty-options">
+                    <button class="game-diff-btn is-active" data-difficulty="easy" type="button" aria-pressed="true">Easy</button>
+                    <button class="game-diff-btn" data-difficulty="medium" type="button" aria-pressed="false">Medium</button>
+                    <button class="game-diff-btn" data-difficulty="hard" type="button" aria-pressed="false">Hard</button>
+                </div>
+            </div>
 
             <div id="county-game" class="county-game">
                 <p>Loading game...</p>
