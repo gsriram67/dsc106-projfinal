@@ -9,6 +9,7 @@
     const countyResult = document.querySelector("#county-result");
     const suggestionsEl = document.querySelector("#county-suggestions");
     const resetBtn = document.querySelector("#us-map-reset");
+    const countyGame = document.querySelector("#county-game");
 
     let countyRows = [];
     let countyLookup = new Map(); // normalized name -> { fips, displayName }
@@ -16,6 +17,11 @@
     let usTopoJson = null;
     let focusedIndex = -1;
 
+    let gameState = {
+        score: 0,
+        total: 0,
+        currentRound: null,
+    };
     // US map rendering state
     let usMapPathFn = null;
     let usMapCountyFeatures = null;
@@ -518,6 +524,142 @@
         });
     }
 
+    // --- Multiple Choice Game ---
+
+    function getRandomItem(items) {
+        return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function getUniqueRowsForYear(year) {
+        const rowsForYear = countyRows.filter((row) => row.year === year && row.rateMid != null);
+
+        const grouped = d3.rollup(
+            rowsForYear,
+            (rows) => rows[0],
+            (row) => row.fips
+        );
+
+        return Array.from(grouped.values());
+    }
+
+    function startCountyGameRound() {
+        if (!countyGame || !countyRows.length) {
+            return;
+        }
+
+        const years = Array.from(new Set(countyRows.map((row) => row.year))).sort(d3.ascending);
+
+        const eligibleYears = years.filter((year) => getUniqueRowsForYear(year).length >= 4);
+
+        if (!eligibleYears.length) {
+            countyGame.innerHTML = `<p>Not enough data to start the game.</p>`;
+            return;
+        }
+
+        const selectedYear = getRandomItem(eligibleYears);
+        const rowsForYear = getUniqueRowsForYear(selectedYear);
+        const options = d3.shuffle(rowsForYear.slice()).slice(0, 4);
+
+        const correctRow = options.reduce((highest, row) => {
+            return row.rateMid > highest.rateMid ? row : highest;
+        }, options[0]);
+
+        gameState.currentRound = {
+            year: selectedYear,
+            options,
+            correctFips: correctRow.fips,
+        };
+
+        countyGame.innerHTML = `
+            <p class="game-year">Random year: ${selectedYear}</p>
+            <h3 class="game-question">Which county had the highest estimated drug mortality rate?</h3>
+
+            <div class="game-options">
+                ${options.map((row) => `
+                    <button class="game-option" type="button" data-fips="${row.fips}">
+                        ${row.county}
+                    </button>
+                `).join("")}
+            </div>
+
+            <div id="game-feedback" class="game-feedback">
+                Pick one county to reveal the answer.
+            </div>
+
+            <p class="game-score">
+                Score: ${gameState.score} / ${gameState.total}
+            </p>
+        `;
+
+        countyGame.querySelectorAll(".game-option").forEach((button) => {
+            button.addEventListener("click", () => {
+                checkCountyGameAnswer(button.dataset.fips);
+            });
+        });
+    }
+
+    function checkCountyGameAnswer(selectedFips) {
+        if (!gameState.currentRound) {
+            return;
+        }
+
+        const { options, correctFips, year } = gameState.currentRound;
+        const correctRow = options.find((row) => row.fips === correctFips);
+
+        const isCorrect = selectedFips === correctFips;
+
+        gameState.total += 1;
+
+        if (isCorrect) {
+            gameState.score += 1;
+        }
+
+        countyGame.querySelectorAll(".game-option").forEach((button) => {
+            button.disabled = true;
+
+            if (button.dataset.fips === correctFips) {
+                button.classList.add("is-correct");
+            } else if (button.dataset.fips === selectedFips) {
+                button.classList.add("is-wrong");
+            }
+        });
+
+        const sortedOptions = options
+            .slice()
+            .sort((a, b) => d3.descending(a.rateMid, b.rateMid));
+
+        const feedback = countyGame.querySelector("#game-feedback");
+
+        feedback.innerHTML = `
+            <p>
+                <strong>${isCorrect ? "Correct!" : "Not quite."}</strong>
+                ${correctRow.county} was highest in ${year}.
+            </p>
+
+            <ul class="game-rates-list">
+                ${sortedOptions.map((row) => `
+                    <li>
+                        <strong>${row.county}:</strong> ${fmtRate(row.rateMid)} deaths per 100k
+                    </li>
+                `).join("")}
+            </ul>
+
+            <button id="game-next-question" class="game-next-button" type="button">
+                Next question
+            </button>
+        `;
+
+        const score = countyGame.querySelector(".game-score");
+
+        if (score) {
+            score.textContent = `Score: ${gameState.score} / ${gameState.total}`;
+        }
+
+        countyGame
+            .querySelector("#game-next-question")
+            .addEventListener("click", startCountyGameRound);
+    }
+
     // --- Init ---
 
     async function initCountyExplorer() {
@@ -555,6 +697,7 @@
             usTopoJson = topoResult.value;
             renderUSMap();
         }
+        startCountyGameRound();
     }
 
     countySearchButton.addEventListener("click", handleSearch);
