@@ -551,6 +551,121 @@ body.theme-dark .step.is-active {
     transition: color 0.22s ease;
 }
 
+/* Step event callout block */
+.step-event {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--panel-border);
+    background: var(--bg-alt);
+    border-radius: 0 2px 2px 0;
+    transition: border-left-color 0.35s ease, background-color 0.22s ease;
+}
+
+.step.is-active .step-event {
+    border-left-color: var(--accent-1);
+}
+
+.step-event-label {
+    display: block;
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.38rem;
+    transition: color 0.22s ease;
+}
+
+.step-event p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text);
+}
+
+/* Step pull quote */
+.step-quote {
+    margin: 0.9rem 0 0;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--panel-border);
+    border-radius: 0 2px 2px 0;
+    background: transparent;
+    transition: border-left-color 0.35s ease;
+}
+
+.step.is-active .step-quote {
+    border-left-color: var(--accent-2);
+}
+
+.step-quote p {
+    margin: 0 0 0.3rem;
+    font-size: 0.92rem;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.step-quote cite {
+    display: block;
+    font-size: 0.75rem;
+    font-style: normal;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    transition: color 0.22s ease;
+}
+
+/* Step sources footer */
+.step-sources {
+    margin-top: 1rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--panel-border);
+    transition: border-color 0.22s ease;
+}
+
+.step-sources-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+    transition: color 0.22s ease;
+}
+
+.step-sources ul {
+    margin: 0;
+    padding: 0 0 0 1rem;
+    list-style: disc;
+}
+
+.step-sources li {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-bottom: 0.18rem;
+    transition: color 0.22s ease;
+}
+
+.step-sources li em {
+    font-style: italic;
+}
+
+.step-sources a {
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--panel-border);
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.step-sources a:hover {
+    color: var(--accent-2);
+    text-decoration-color: var(--accent-2);
+}
+
 /* Responsive Overrides */
 @media (max-width: 900px) {
     #scrolly {
@@ -595,6 +710,116 @@ body.theme-dark .step.is-active {
     .chart-container {
         min-height: 460px;
     }
+}
+
+/* Political Context Bridge Section */
+.politics-card {
+    padding: 1.8rem;
+    border: 2px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--panel);
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.politics-heading {
+    margin: 0.3rem 0 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.politics-deck {
+    max-width: 72ch;
+    margin: 0.9rem 0 0;
+    color: var(--text);
+    font-size: 0.97rem;
+    line-height: 1.65;
+}
+
+.politics-header {
+    margin-bottom: 1.8rem;
+}
+
+.politics-callouts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+}
+
+@media (max-width: 780px) {
+    .politics-callouts { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 520px) {
+    .politics-callouts { grid-template-columns: 1fr; }
+}
+
+.politics-callout {
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--bg-alt);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.politics-callout-num {
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.politics-callout-label {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text);
+    flex: 1;
+    transition: color 0.22s ease;
+}
+
+.politics-callout-source {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.22s ease;
+}
+
+.politics-body {
+    border-top: 1px solid var(--panel-border);
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    max-width: 80ch;
+    transition: border-color 0.22s ease;
+}
+
+.politics-body p {
+    margin: 0;
+    font-size: 0.96rem;
+    line-height: 1.68;
+    color: var(--text);
+    transition: color 0.22s ease;
+}
+
+.politics-bridge {
+    font-style: italic;
+    color: var(--muted) !important;
+    font-size: 0.9rem !important;
 }
 
 /* Border Analysis Section */
@@ -1386,6 +1611,69 @@ body.theme-dark .dot-nonborder {
 .us-map-reset-btn:hover {
     color: var(--text-heading);
     border-color: var(--text-heading);
+}
+
+/* Conclusion / Takeaway Card */
+.takeaway-card {
+    padding: 1.8rem;
+    border: 2px solid var(--panel-border);
+    border-radius: 4px;
+    background: var(--panel);
+    transition: background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.takeaway-heading {
+    margin: 0.3rem 0 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.takeaway-body {
+    margin-top: 1.2rem;
+    max-width: 76ch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.takeaway-body p {
+    margin: 0;
+    font-size: 0.97rem;
+    line-height: 1.68;
+    color: var(--text);
+    transition: color 0.22s ease;
+}
+
+.takeaway-quote {
+    margin: 1.4rem 0 0;
+    padding: 0.85rem 1.2rem;
+    border-left: 3px solid var(--accent-2);
+    border-radius: 0 2px 2px 0;
+    max-width: 76ch;
+}
+
+.takeaway-quote p {
+    margin: 0 0 0.3rem;
+    font-size: 1rem;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--text-heading);
+    transition: color 0.22s ease;
+}
+
+.takeaway-quote cite {
+    display: block;
+    font-size: 0.75rem;
+    font-style: normal;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    transition: color 0.22s ease;
 }
 
 /* County Multiple Choice Game */

@@ -6,6 +6,7 @@ const state = {
     series: [],
     selectedIndex: 0,
     playTimer: null,
+    tweenTimer: null,
     resizeObserver: null,
     urbanRuralMap: new Map(),
 };
@@ -348,12 +349,15 @@ function updateSelectedYear(nextIndex) {
     updateText();
     renderChart();
 
-    // Smoothly scroll the matching narrative step into view if not already highlighted
+    // Don't auto-scroll while the play animation is running — the chart is sticky
+    // and visible; jumping the page every few years is disorienting.
+    if (state.playTimer) return;
+
     const matchingStep = document.querySelector(`#scrolly .step[data-year-index="${nextIndex}"]`);
     if (matchingStep && !matchingStep.classList.contains("is-active")) {
         document.querySelectorAll("#scrolly .step").forEach((el) => el.classList.remove("is-active"));
         matchingStep.classList.add("is-active");
-        
+
         matchingStep.scrollIntoView({
             behavior: "smooth",
             block: "center",
@@ -362,6 +366,10 @@ function updateSelectedYear(nextIndex) {
 }
 
 function startPlaying() {
+    if (state.tweenTimer) {
+        clearInterval(state.tweenTimer);
+        state.tweenTimer = null;
+    }
     if (state.playTimer) {
         clearInterval(state.playTimer);
     }
@@ -456,6 +464,41 @@ async function init() {
     state.resizeObserver.observe(chartContainer);
 }
 
+function tweenToIndex(targetIndex) {
+    if (state.tweenTimer) {
+        clearInterval(state.tweenTimer);
+        state.tweenTimer = null;
+    }
+    stopPlaying();
+
+    if (state.selectedIndex === targetIndex) return;
+
+    const gap = Math.abs(targetIndex - state.selectedIndex);
+    if (gap <= 1) {
+        updateSelectedYear(targetIndex);
+        return;
+    }
+
+    const direction = targetIndex > state.selectedIndex ? 1 : -1;
+    const STEP_MS = 80;
+
+    state.tweenTimer = setInterval(() => {
+        const next = state.selectedIndex + direction;
+        const done = direction > 0 ? next >= targetIndex : next <= targetIndex;
+
+        if (done) {
+            clearInterval(state.tweenTimer);
+            state.tweenTimer = null;
+            updateSelectedYear(targetIndex);
+        } else {
+            state.selectedIndex = next;
+            yearSlider.value = String(next);
+            updateText();
+            renderChart();
+        }
+    }, STEP_MS);
+}
+
 function initScrollytelling() {
     if (typeof scrollama !== "function") {
         console.warn("Scrollama library not loaded yet.");
@@ -480,9 +523,9 @@ function initScrollytelling() {
             });
             stepEl.classList.add("is-active");
 
-            // Update state, redraw chart, and sync slider
+            // Tween through intermediate years rather than snapping
             if (state.selectedIndex !== yearIndex) {
-                updateSelectedYear(yearIndex);
+                tweenToIndex(yearIndex);
             }
         });
 
