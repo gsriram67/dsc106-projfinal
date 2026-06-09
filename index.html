@@ -35,6 +35,61 @@
             </a>
         </section>
 
+        <!-- Prediction Hook -->
+        <section class="hook-card" id="hook-card">
+            <p class="eyebrow">Before you scroll</p>
+            <h2 class="hook-heading">Two quick questions</h2>
+
+            <div class="hook-body">
+                <div class="hook-q">
+                    <p class="hook-q-label">1. By 2015, which area do you think had the higher drug mortality rate?</p>
+                    <div class="hook-options" role="group" aria-label="Rate prediction">
+                        <button class="hook-opt" data-value="urban" type="button">
+                            <strong>Urban counties</strong>
+                            <span>Big cities and suburbs</span>
+                        </button>
+                        <button class="hook-opt" data-value="rural" type="button">
+                            <strong>Rural counties</strong>
+                            <span>Small towns and farmland</span>
+                        </button>
+                        <button class="hook-opt" data-value="same" type="button">
+                            <strong>About the same</strong>
+                            <span>Converged to similar levels</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="hook-q">
+                    <p class="hook-q-label">2. Where are you from? <span class="hook-optional">Optional &mdash; we&rsquo;ll show your state&rsquo;s trend at the 2015 reveal.</span></p>
+                    <select class="hook-state-select" id="hook-state-select">
+                        <option value="">Skip / prefer not to say</option>
+                        <option>Alabama</option><option>Alaska</option><option>Arizona</option>
+                        <option>Arkansas</option><option>California</option><option>Colorado</option>
+                        <option>Connecticut</option><option>Delaware</option><option>District of Columbia</option>
+                        <option>Florida</option><option>Georgia</option><option>Hawaii</option>
+                        <option>Idaho</option><option>Illinois</option><option>Indiana</option>
+                        <option>Iowa</option><option>Kansas</option><option>Kentucky</option>
+                        <option>Louisiana</option><option>Maine</option><option>Maryland</option>
+                        <option>Massachusetts</option><option>Michigan</option><option>Minnesota</option>
+                        <option>Mississippi</option><option>Missouri</option><option>Montana</option>
+                        <option>Nebraska</option><option>Nevada</option><option>New Hampshire</option>
+                        <option>New Jersey</option><option>New Mexico</option><option>New York</option>
+                        <option>North Carolina</option><option>North Dakota</option><option>Ohio</option>
+                        <option>Oklahoma</option><option>Oregon</option><option>Pennsylvania</option>
+                        <option>Rhode Island</option><option>South Carolina</option><option>South Dakota</option>
+                        <option>Tennessee</option><option>Texas</option><option>Utah</option>
+                        <option>Vermont</option><option>Virginia</option><option>Washington</option>
+                        <option>West Virginia</option><option>Wisconsin</option><option>Wyoming</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="hook-footer">
+                <button class="hook-cta" id="hook-submit" type="button" disabled>See the data &rarr;</button>
+                <button class="hook-skip" id="hook-skip" type="button">Skip questions</button>
+            </div>
+        </section>
+
         <!-- Scrollytelling Container -->
         <div id="scrolly">
             <div id="scrolly-bg-map" class="scrolly-bg-map" aria-hidden="true"></div>
@@ -125,6 +180,7 @@
                 </div>
 
                 <div class="step" data-year-index="16">
+                    <div id="prediction-reveal" class="prediction-callout" aria-live="polite"></div>
                     <span class="step-badge">2015</span>
                     <h3>Complete Convergence</h3>
                     <p>Rural 15.4 per 100k. Urban 15.7 per 100k. The divide is gone. The epidemic is universal &mdash; no longer a rural story, no longer an urban story.</p>
@@ -302,29 +358,6 @@
             </blockquote>
         </section>
 
-        <!-- Mini Game -->
-        <section class="county-game-section" id="county-game-section">
-            <p class="eyebrow">Mini Game</p>
-            <h2>Which County Was Highest?</h2>
-            <p class="game-description">
-                Test what you spotted while scrolling. Each difficulty draws on a different part of this page &mdash;
-                the national trend, the border spotlight, and the closest county calls &mdash; and the rates get
-                closer together (harder to call) as you move up.
-            </p>
-
-            <div class="game-difficulty" role="group" aria-label="Difficulty">
-                <span class="game-difficulty-label">Difficulty</span>
-                <div class="game-difficulty-options">
-                    <button class="game-diff-btn is-active" data-difficulty="easy" type="button" aria-pressed="true">Easy</button>
-                    <button class="game-diff-btn" data-difficulty="medium" type="button" aria-pressed="false">Medium</button>
-                    <button class="game-diff-btn" data-difficulty="hard" type="button" aria-pressed="false">Hard</button>
-                </div>
-            </div>
-
-            <div id="county-game" class="county-game">
-                <p>Loading game...</p>
-            </div>
-        </section>
     </main>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -338,6 +371,53 @@
             e.preventDefault();
             document.getElementById("county-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
         });
+    </script>
+
+    <script>
+        (function () {
+            const card    = document.getElementById("hook-card");
+            const submit  = document.getElementById("hook-submit");
+            const skip    = document.getElementById("hook-skip");
+            const sel     = document.getElementById("hook-state-select");
+            const opts    = card.querySelectorAll(".hook-opt");
+
+            let prediction = sessionStorage.getItem("hookPrediction") || "";
+
+            if (prediction) {
+                opts.forEach(function (b) {
+                    if (b.dataset.value === prediction) b.classList.add("is-selected");
+                });
+                submit.disabled = false;
+            }
+
+            const savedState = sessionStorage.getItem("hookState") || "";
+            if (savedState) sel.value = savedState;
+
+            opts.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    opts.forEach(function (b) { b.classList.remove("is-selected"); });
+                    btn.classList.add("is-selected");
+                    prediction = btn.dataset.value;
+                    submit.disabled = false;
+                });
+            });
+
+            function saveAndScroll() {
+                sessionStorage.setItem("hookPrediction", prediction);
+                sessionStorage.setItem("hookState", sel.value);
+                document.getElementById("scrolly").scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+
+            submit.addEventListener("click", function () {
+                if (prediction) saveAndScroll();
+            });
+
+            skip.addEventListener("click", function () {
+                sessionStorage.setItem("hookPrediction", "");
+                sessionStorage.setItem("hookState", sel.value);
+                document.getElementById("scrolly").scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        })();
     </script>
 </body>
 </html>

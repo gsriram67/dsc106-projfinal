@@ -553,6 +553,9 @@ async function init() {
         renderBgMap(topoResult.value);
     }
 
+    // Inject prediction reveal into the 2015 step
+    injectPredictionReveal();
+
     // Initialize Scrollama scrollytelling
     initScrollytelling();
 
@@ -633,6 +636,10 @@ function initScrollytelling() {
             });
             stepEl.classList.add("is-active");
 
+            // Re-inject prediction reveal each time the 2015 step enters — the user
+            // may have answered the hook after the initial data load ran.
+            if (yearIndex === 16) injectPredictionReveal();
+
             // Tween through intermediate years rather than snapping
             if (state.selectedIndex !== yearIndex) {
                 tweenToIndex(yearIndex);
@@ -640,6 +647,37 @@ function initScrollytelling() {
         });
 
     window.addEventListener("resize", scroller.resize);
+}
+
+function injectPredictionReveal() {
+    const el = document.getElementById("prediction-reveal");
+    if (!el) return;
+
+    const prediction = sessionStorage.getItem("hookPrediction") || "";
+    const stateName  = sessionStorage.getItem("hookState") || "";
+
+    const messages = {
+        urban: "You predicted urban counties would be higher — and they still edged ahead at 15.7 vs. 15.4 per 100k. But the margin that felt structural in 1999 had collapsed to a rounding error.",
+        rural: "You predicted rural counties would be higher — and rural did briefly overtake urban in 2010 (11.3 vs. 10.3 per 100k). By 2015 the lines had converged almost exactly.",
+        same:  "You called it. By 2015 the gap was just 0.3 per 100k — the divide that seemed permanent in 1999 had collapsed to statistical noise.",
+    };
+
+    const msg = messages[prediction];
+    if (!msg) return;
+
+    let stateHtml = "";
+    if (stateName) {
+        const stateRows = state.rows.filter((r) => r.state === stateName);
+        const byYear = d3.rollup(stateRows, (v) => d3.median(v, (r) => r.rateMid), (r) => r.year);
+        const r1999 = byYear.get(1999);
+        const r2015 = byYear.get(2015);
+        if (r1999 != null && r2015 != null) {
+            const dir = r2015 > r1999 ? "rose" : "fell";
+            stateHtml = `<p class="prediction-state"><strong>${stateName}:</strong> estimated median rate ${dir} from ${formatRate(r1999)} to ${formatRate(r2015)} per 100k (1999 &rarr; 2015).</p>`;
+        }
+    }
+
+    el.innerHTML = `<span class="prediction-reveal-label">Your prediction</span><p class="prediction-reveal-msg">${msg}</p>${stateHtml}`;
 }
 
 init().catch((error) => {

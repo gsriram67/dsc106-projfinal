@@ -9,7 +9,6 @@
     const countyResult = document.querySelector("#county-result");
     const suggestionsEl = document.querySelector("#county-suggestions");
     const resetBtn = document.querySelector("#us-map-reset");
-    const countyGame = document.querySelector("#county-game");
 
     let countyRows = [];
     let countyLookup = new Map(); // normalized name -> { fips, displayName }
@@ -17,16 +16,7 @@
     let usTopoJson = null;
     let focusedIndex = -1;
 
-    let gameState = {
-        difficulty: "easy",
-        score: 0,
-        total: 0,
-        streak: 0,
-        bestStreak: 0,
-        currentRound: null,
-    };
     let seenCounties = new Set();      // fips the user has viewed in the explorer
-    let nationalMediansCache = null;   // year -> { urban, rural } national medians
     // US map rendering state
     let usMapPathFn = null;
     let usMapCountyFeatures = null;
@@ -530,263 +520,6 @@
         });
     }
 
-    // --- Multiple Choice Game ---
-    //
-    // Questions only ever use values the user has already seen on this page:
-    //   Easy   -> national urban-vs-rural median (the scrollytelling line chart)
-    //   Medium -> the 2015 border spotlight figures (+ a county the user explored)
-    //   Hard   -> counties the user actually looked up in the explorer
-    // Rates get closer together as difficulty rises.
-
-    const BORDER_YEAR = 2015;
-    const BORDER_FEATURED = [
-        { id: "pima", label: "Pima County, AZ", rate: 31.0 },
-        { id: "brewster", label: "Brewster County, TX", rate: 21.1 },
-        { id: "natl", label: "U.S. national median", rate: 15.1 },
-    ];
-
-    function getRandomItem(items) {
-        return items[Math.floor(Math.random() * items.length)];
-    }
-
-    // Streak indicator: one 🔥 per consecutive correct answer.
-    const MAX_STREAK_FLAMES = 12;
-    function streakHtml() {
-        const streak = gameState.streak;
-        if (!streak) {
-            return `<span class="game-streak-empty">No streak yet — answer correctly to light a 🔥</span>`;
-        }
-        const flames = "🔥".repeat(Math.min(streak, MAX_STREAK_FLAMES));
-        const overflow = streak > MAX_STREAK_FLAMES ? `+${streak - MAX_STREAK_FLAMES} ` : "";
-        return `
-            <span class="game-streak-flames" aria-hidden="true">${flames}</span>
-            <span class="game-streak-count">${overflow}${streak} in a row</span>
-        `;
-    }
-
-    function updateStreakDisplay() {
-        const el = countyGame.querySelector(".game-streak");
-        if (el) el.innerHTML = streakHtml();
-    }
-
-    function scoreText() {
-        const best = gameState.bestStreak > 0 ? ` · Best streak: ${gameState.bestStreak}` : "";
-        return `Score: ${gameState.score} / ${gameState.total}${best}`;
-    }
-
-    // National urban/rural medians per year — mirrors the scrollytelling chart.
-    function computeNationalMedians() {
-        if (nationalMediansCache) return nationalMediansCache;
-        const valid = countyRows.filter((r) => r.rateMid != null && classMap.has(r.fips));
-        const byYear = d3.rollups(
-            valid,
-            (vals) => ({
-                urban: d3.median(vals.filter((r) => classifyFips(r.fips) === "urban"), (r) => r.rateMid),
-                rural: d3.median(vals.filter((r) => classifyFips(r.fips) === "rural"), (r) => r.rateMid),
-            }),
-            (r) => r.year
-        );
-        nationalMediansCache = new Map(byYear);
-        return nationalMediansCache;
-    }
-
-    function countyDisplayName(fips) {
-        for (const entry of countyLookup.values()) {
-            if (entry.fips === fips) return entry.displayName;
-        }
-        return fips;
-    }
-
-    function countyRateAt(fips, year) {
-        const row = countyRows.find((r) => r.fips === fips && r.year === year);
-        return row ? row.rateMid : null;
-    }
-
-    // Easy: national urban vs rural median, favoring years with the widest gap.
-    function buildEasyRound() {
-        const medians = computeNationalMedians();
-        const years = Array.from(medians.entries())
-            .filter(([, m]) => m.urban != null && m.rural != null)
-            .map(([year, m]) => ({ year, m, gap: Math.abs(m.urban - m.rural) }));
-        if (!years.length) return null;
-
-        years.sort((a, b) => d3.descending(a.gap, b.gap));
-        const widePool = years.slice(0, Math.max(1, Math.ceil(years.length / 2)));
-        const pick = getRandomItem(widePool);
-
-        return {
-            context: `National Trend · ${pick.year}`,
-            question: `In ${pick.year}, which type of county had the higher median drug mortality rate?`,
-            options: [
-                { id: "urban", label: "Urban counties", rate: pick.m.urban, detail: `${fmtRate(pick.m.urban)} per 100k (median)` },
-                { id: "rural", label: "Rural counties", rate: pick.m.rural, detail: `${fmtRate(pick.m.rural)} per 100k (median)` },
-            ],
-        };
-    }
-
-    // Medium: the 2015 border spotlight, optionally joined by a county the user explored.
-    function buildMediumRound() {
-        const options = BORDER_FEATURED.map((o) => ({ ...o, detail: `${fmtRate(o.rate)} per 100k` }));
-        const usedLabels = new Set(options.map((o) => o.label));
-
-        const exploredExtras = Array.from(seenCounties)
-            .map((fips) => ({ fips, label: countyDisplayName(fips), rate: countyRateAt(fips, BORDER_YEAR) }))
-            .filter((d) => d.rate != null && !usedLabels.has(d.label)
-                && options.every((o) => Math.abs(o.rate - d.rate) >= 2));
-
-        if (exploredExtras.length) {
-            const extra = getRandomItem(exploredExtras);
-            options.push({ id: extra.fips, label: extra.label, rate: extra.rate, detail: `${fmtRate(extra.rate)} per 100k` });
-        }
-
-        return {
-            context: `Border Spotlight · ${BORDER_YEAR}`,
-            question: `Which had the highest drug mortality rate in ${BORDER_YEAR}?`,
-            options,
-        };
-    }
-
-    // Hard: four counties from a random year whose rates sit in the tightest
-    // cluster (closest call), with a strictly unique highest so there's one answer.
-    function buildHardRound() {
-        const years = Array.from(new Set(countyRows.map((r) => r.year)));
-
-        for (const year of d3.shuffle(years.slice())) {
-            const uniq = Array.from(
-                d3.rollup(
-                    countyRows.filter((r) => r.year === year && r.rateMid != null),
-                    (v) => v[0],
-                    (r) => r.fips
-                ).values()
-            ).sort((a, b) => d3.ascending(a.rateMid, b.rateMid));
-
-            if (uniq.length < 4) continue;
-
-            // Scan consecutive windows of four (closest rates); keep the tightest
-            // window whose top value is strictly greater than the runner-up.
-            let best = null;
-            for (let i = 0; i + 4 <= uniq.length; i++) {
-                const window = uniq.slice(i, i + 4);
-                if (window[3].rateMid <= window[2].rateMid) continue;
-                const spread = window[3].rateMid - window[0].rateMid;
-                if (!best || spread < best.spread) best = { window, spread };
-            }
-            if (!best) continue;
-
-            return {
-                context: `Toughest Call · ${year}`,
-                question: `Which county had the highest drug mortality rate in ${year}?`,
-                options: best.window.map((r) => ({
-                    id: r.fips,
-                    label: r.county,
-                    rate: r.rateMid,
-                    detail: `${fmtRate(r.rateMid)} per 100k`,
-                })),
-            };
-        }
-
-        return null;
-    }
-
-    function buildRound(difficulty) {
-        if (difficulty === "medium") return buildMediumRound();
-        if (difficulty === "hard") return buildHardRound();
-        return buildEasyRound();
-    }
-
-    function startCountyGameRound() {
-        if (!countyGame || !countyRows.length) return;
-
-        const round = buildRound(gameState.difficulty);
-
-        if (!round) {
-            countyGame.innerHTML = `<div class="game-empty"><p>Not enough data to start the game.</p></div>`;
-            return;
-        }
-
-        gameState.currentRound = round;
-        const display = d3.shuffle(round.options.slice());
-
-        countyGame.innerHTML = `
-            <p class="game-year">${round.context}</p>
-            <h3 class="game-question">${round.question}</h3>
-
-            <div class="game-options">
-                ${display.map((o) => `
-                    <button class="game-option" type="button" data-id="${o.id}">
-                        ${o.label}
-                    </button>
-                `).join("")}
-            </div>
-
-            <div id="game-feedback" class="game-feedback" aria-live="polite">
-                Pick an option to reveal the answer.
-            </div>
-
-            <p class="game-streak" aria-live="polite">${streakHtml()}</p>
-
-            <p class="game-score">${scoreText()}</p>
-        `;
-
-        countyGame.querySelectorAll(".game-option").forEach((button) => {
-            button.addEventListener("click", () => checkCountyGameAnswer(button.dataset.id));
-        });
-    }
-
-    function checkCountyGameAnswer(selectedId) {
-        const round = gameState.currentRound;
-        if (!round) return;
-
-        const sorted = round.options.slice().sort((a, b) => d3.descending(a.rate, b.rate));
-        const correctId = sorted[0].id;
-        const isCorrect = selectedId === correctId;
-
-        gameState.total += 1;
-        const brokenStreak = !isCorrect && gameState.streak > 0 ? gameState.streak : 0;
-        if (isCorrect) {
-            gameState.score += 1;
-            gameState.streak += 1;
-            gameState.bestStreak = Math.max(gameState.bestStreak, gameState.streak);
-        } else {
-            gameState.streak = 0;
-        }
-
-        countyGame.querySelectorAll(".game-option").forEach((button) => {
-            button.disabled = true;
-            if (button.dataset.id === correctId) button.classList.add("is-correct");
-            else if (button.dataset.id === selectedId) button.classList.add("is-wrong");
-        });
-
-        const streakNote = isCorrect
-            ? (gameState.streak >= 2 ? ` 🔥 ${gameState.streak} in a row!` : "")
-            : (brokenStreak >= 2 ? ` Streak of ${brokenStreak} broken.` : "");
-
-        const feedback = countyGame.querySelector("#game-feedback");
-        feedback.innerHTML = `
-            <p>
-                <strong>${isCorrect ? "Correct!" : "Not quite."}</strong>
-                ${sorted[0].label} had the highest rate.${streakNote}
-            </p>
-
-            <ul class="game-rates-list">
-                ${sorted.map((o) => `
-                    <li><strong>${o.label}:</strong> ${o.detail}</li>
-                `).join("")}
-            </ul>
-
-            <button id="game-next-question" class="game-next-button" type="button">
-                Next question
-            </button>
-        `;
-
-        updateStreakDisplay();
-
-        const score = countyGame.querySelector(".game-score");
-        if (score) score.textContent = scoreText();
-
-        countyGame.querySelector("#game-next-question").addEventListener("click", startCountyGameRound);
-    }
-
     // --- Init ---
 
     async function initCountyExplorer() {
@@ -801,6 +534,7 @@
                 return {
                     year, population, rateMid,
                     county: row.County,
+                    state: row.State,
                     fips: String(row.FIPS).trim().padStart(5, "0"),
                 };
             }),
@@ -824,28 +558,18 @@
             usTopoJson = topoResult.value;
             renderUSMap();
         }
-        startCountyGameRound();
-    }
+
+        // Pre-zoom the map to the user's saved state if they answered Q2 in the hook.
+        const savedState = sessionStorage.getItem("hookState") || "";
+        if (savedState && usTopoJson) {
+            const stateCounty = countyRows.find((r) => r.state === savedState);
+            if (stateCounty) {
+                zoomToState(stateCounty.fips);
+                countyResult.innerHTML = `<p class="county-placeholder">Showing <strong>${savedState}</strong> &mdash; click a county or search by name to explore its data.</p>`;
+            }
+        }
 
     countySearchButton.addEventListener("click", handleSearch);
-
-    document.querySelectorAll(".game-diff-btn").forEach((button) => {
-        button.addEventListener("click", () => {
-            if (button.dataset.difficulty === gameState.difficulty) return;
-            gameState.difficulty = button.dataset.difficulty;
-            document.querySelectorAll(".game-diff-btn").forEach((b) => {
-                const active = b.dataset.difficulty === gameState.difficulty;
-                b.classList.toggle("is-active", active);
-                b.setAttribute("aria-pressed", active ? "true" : "false");
-            });
-            // Score and streak aren't comparable across difficulties, so reset on switch.
-            gameState.score = 0;
-            gameState.total = 0;
-            gameState.streak = 0;
-            gameState.bestStreak = 0;
-            startCountyGameRound();
-        });
-    });
 
     initCountyExplorer().catch((error) => {
         console.error(error);
