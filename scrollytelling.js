@@ -21,8 +21,8 @@ const yearSummary = document.querySelector("#year-summary");
 const legendContainer = document.querySelector("#legend");
 
 const urbanRuralGroups = [
-    { key: "rural", label: "Rural counties", color: "var(--accent-4)" }, // Solarized Orange (matches the orange line in the image)
-    { key: "urban", label: "Urban counties", color: "var(--accent-2)" }, // Solarized Blue (matches the blue line in the image)
+    { key: "rural", label: "Rural counties", color: "var(--accent-4)" },
+    { key: "urban", label: "Urban counties", color: "var(--accent-2)" },
 ];
 
 const formatRate = d3.format(".1f");
@@ -205,6 +205,22 @@ function buildSeries(rows, urbanRuralMap) {
     return { series, years };
 }
 
+function buildStateSeries(rows, years, stateName) {
+    const stateRows = rows.filter((r) => r.state === stateName && r.rateMid != null);
+    const byYear = d3.rollup(stateRows, (v) => d3.median(v, (r) => r.rateMid), (r) => r.year);
+    return {
+        key: "state",
+        label: stateName,
+        color: "var(--accent-state)",
+        dashed: true,
+        values: years.map((year) => ({
+            year,
+            value: byYear.get(year) ?? null,
+            count: stateRows.filter((r) => r.year === year).length,
+        })),
+    };
+}
+
 function updateText() {
     const selectedYear = state.years[state.selectedIndex];
     const selectedValues = state.series
@@ -259,14 +275,16 @@ function renderChart() {
     legendContainer.innerHTML = "";
 
     legendContainer.innerHTML = state.series
-        .map(
-            (series) => `
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background:${series.color}"></span>
-                    <span>${series.label}</span>
-                </div>
-            `
-        )
+        .map((series) => {
+            const swatch = series.dashed
+                ? `<svg class="legend-swatch-line" width="20" height="10" aria-hidden="true">
+                     <line x1="0" y1="5" x2="20" y2="5"
+                       stroke="${series.color}" stroke-width="2"
+                       stroke-dasharray="5 3" />
+                   </svg>`
+                : `<span class="legend-swatch" style="background:${series.color}"></span>`;
+            return `<div class="legend-item">${swatch}<span>${series.label}</span></div>`;
+        })
         .join("");
 
     const margin = { top: 28, right: 28, bottom: 58, left: 72 };
@@ -345,9 +363,10 @@ function renderChart() {
         .attr("d", (series) => line(series.values.slice(0, state.selectedIndex + 1)))
         .attr("fill", "none")
         .attr("stroke", (series) => series.color)
-        .attr("stroke-width", 3)
+        .attr("stroke-width", (series) => series.dashed ? 2 : 3)
+        .attr("stroke-dasharray", (series) => series.dashed ? "7 4" : "none")
         .attr("stroke-linecap", "round")
-        .attr("opacity", 0.9);
+        .attr("opacity", (series) => series.dashed ? 0.8 : 0.9);
 
     seriesGroup
         .selectAll("circle.series-point")
@@ -537,6 +556,11 @@ async function init() {
     const built = buildSeries(state.rows, state.urbanRuralMap);
     state.series = built.series;
     state.years = built.years;
+
+    const hookState = sessionStorage.getItem("hookState") || "";
+    if (hookState) {
+        state.series = [...built.series, buildStateSeries(state.rows, built.years, hookState)];
+    }
 
     yearSlider.min = "0";
     yearSlider.max = String(state.years.length - 1);

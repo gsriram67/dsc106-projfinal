@@ -568,6 +568,7 @@
                 countyResult.innerHTML = `<p class="county-placeholder">Showing <strong>${savedState}</strong> &mdash; click a county or search by name to explore its data.</p>`;
             }
         }
+    }
 
     countySearchButton.addEventListener("click", handleSearch);
 
